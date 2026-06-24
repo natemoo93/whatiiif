@@ -4,9 +4,9 @@ A lightweight tool for creating shareable deep links to specific regions of digi
 
 ## The problem
 
-IIIF (International Image Interoperability Framework) has made digitized primary sources accessible across thousands of institutional repositories. But sharing a precise reference to something specific — a name in a census, a passage in a manuscript, an entry in a travel log, still means either sending someone a vague "it's on page 6 somewhere" or hoping your viewer's URL updates as you navigate.
+IIIF (International Image Interoperability Framework) has made digitized primary sources accessible across thousands of institutional repositories. But sharing a precise reference to something specific like a name in a census, a passage in a manuscript, an entry in a travel log, still means either sending a vague "it's on page 6 somewhere" or hoping your viewer's URL updates as you navigate.
 
-Whatiiif closes that gap. Paste a page URL from a supported institution, draw a box around what you want to share, and get a permanent link that shows anyone exactly what you're pointing at — no viewer software required.
+Whatiiif closes that gap. Paste a page URL from a supported institution, draw a box around what you want to share, and get a permanent link that shows anyone exactly what you're pointing at. No viewer software required.
 
 ## How it works
 
@@ -22,7 +22,7 @@ Researchers citing specific content in digitized primary sources, digital humani
 
 ## Self-host
 
-whatiiif is a single static HTML file with no backend dependencies. Download `index.html` and serve it from anywhere — GitHub Pages, Netlify, your own server, or just open it locally.
+whatiiif is a single static HTML file with no backend dependencies. Download `index.html` and serve it from anywhere.
 
 ## Built with
 
