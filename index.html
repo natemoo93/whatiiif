@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>whatiiif</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAEKElEQVRYhe2WS2yUVRTHf+f7Zj5nyrTDSDszQB9BaxOwAWtRkBaURDFGSXRhTBQNj0goGxNDCEESq1YeiQkLCCQkSCAuIMTEaAxKoo6hFNhAfSQiVCid8rIFYVr6msdx0U6ZztyWlo0L+a/mnsf/f+6559754AH+75DMxerqaneht+N9UV5XIU9Um1Ip+7MtJ1rP3g/5pvllM1NWah2WPCNKjyKHHPel7fUREjkF1IM1UFv6NcrLWTx9qK7Y3BQ9OBHxjbVlb6K6F/Bkub5xjre9Wg8pACttHagpW2kQB/Ag8sXGmrLF4xXfVFv6PKoHDOIASwdqy5anF670D0HX6OicNui+o58sfyHPlfcKFktQKoDQoFuvgZxD5GhP1z/fRn46thfEHpVNtQ74fFAXWLckNMm581AXWTORhtfrpbyiguKS4qTIGMSAqiYvt7fb587+SV9f32hhqd5Uyrf9RHuvC8DT7YRTYhYPBoPMrnoCx3GGOjE2RMQuLikhFArRfLqZjo6/TWHWJLcdBi5aAHHLHTdFhcIhqp+emxafENyOw9x5TxGeGjb6B/oTcRgaQq/rwhVgRL/8/gKqqqsRsQzp44OIMKeqivyCgmxX78XSy1eHC6iPkEDl1N1EmPl4JZZ1/+Jp2LZN5exKJOOAFT11+DBJyDjTRWV+B1gKUFRURHnFYyOITra08/GXEaLqw7GUsM8zbr/X6+XmjZv09vQMVSCbG6O3Tw93ACCW7+wHbQMIT5uWs5N9kTPcutPHvNrnaIx2Tdg/bfowZ2u33zmQXgwXsONIS7+l1gogGXg4kEOQxratn/LrL2cm7A8EAgAJS6wVO4609OcUANDQdOlHVJd5PLkP2KrFVQR8XgI+L6sWV03Y7/F6Ad5qaGyNZNqNd//YlrouEfEZtwjE4wmaL0Q53XoNQXhyRpg5M4pxu12jpaBo18INu3OugzFDxGoDnZVtT6WUjuvX+b3tGntOnkd18PH+4WyU1fNvUVkapigUwrJy9yUil0xaxnsm6EmTvbOzg1gsBoY/DUGJxWLc6Ow0paLKCZPd2AEVOYjqymx7d2xwuksDebw7v5w/rt8GYFZwMiWT8wDoisUoChaZOA+ZtIwzoIoc37Y2AizKtF9o+YtkMmlKGYZt2zxS/miWih6vWb97oUhu78xHIKhYvAf0Ztrz83NmKAeGmB5L7TqT+KgFANSs39Ws8Abc/XwqDE6hwO9nxLuaUXWB309hcEqmNakqyxZs2PnbaDrGI8hE49a6l0AOAIVpWzyRoKe7m0R8sDaX20Wez4fbNWKkOiystxds2Pn9WPz3LACgqWHN9JTL+gh4B3CPHS0Diu7XZOLDRR/suXov7nEVkMbPDWtLXG55TdEXhz7Jpg6RXFHhvKh+l0jIV89u2hWdCO8DPMB/in8BBwpp4I4vLYcAAAAASUVORK5CYII=">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
+  --paper:#f7f4ef;--paper-warm:#ede9e2;--rule:#ccc8c0;
+  --accent:#7a3b1e;--accent-light:#c4886a;--accent-bg:#f5ede8;
+  --serif:'Spectral',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
+}
+html{background:var(--paper);color:var(--ink);font-family:var(--sans)}
+body{min-height:100vh;display:flex;flex-direction:column}
+.masthead{border-bottom:2px solid var(--ink);padding:1.1rem 2rem 0.9rem;display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.masthead-title{font-family:var(--serif);font-size:1.05rem;font-weight:300;letter-spacing:.08em;text-transform:uppercase}
+.masthead-rule{flex:1;border:none;border-top:.5px solid var(--rule);align-self:center;min-width:2rem}
+.masthead-sub{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
+.state{font-family:var(--serif);font-size:1.05rem;font-weight:300;font-style:italic;color:var(--ink-mid);padding:3rem 0;text-align:center}
+.state.is-err{color:var(--accent);font-style:normal;font-size:.9rem;line-height:1.6}
+.btn{font-family:var(--sans);font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:.5rem 1rem;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;transition:background .12s,color .12s;white-space:nowrap}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.is-accent{border-color:var(--accent);color:var(--accent)}
+.btn.is-accent:hover{background:var(--accent);color:var(--paper)}
+.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.25rem}
+
+/* viewer */
+#viewerMode{display:none}
+.viewer-header{margin-bottom:1.25rem}
+.viewer-header h1{font-family:var(--serif);font-size:1.5rem;font-weight:300;line-height:1.25;margin-bottom:.35rem}
+.viewer-header p{font-size:.85rem;color:var(--ink-mid);line-height:1.6}
+.input-row{display:flex;gap:.5rem;margin-bottom:.5rem}
+.input-row input{flex:1;font-family:monospace;font-size:.8rem;padding:.55rem .75rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);outline:none}
+.input-row input:focus{border-color:var(--accent-light)}
+.input-hint{font-size:.7rem;color:var(--ink-faint);margin-bottom:1.25rem;line-height:1.5}
+.input-hint a{color:var(--accent);text-decoration:none}
+.detected-platform{font-size:.72rem;color:var(--ink-faint);margin-top:.3rem;min-height:1rem;font-style:italic}
+.detected-platform.is-found{color:#3a7a4a;font-style:normal;font-weight:500}
+.page-nav{display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;flex-wrap:wrap}
+.page-nav select{font-size:.78rem;padding:.4rem .6rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);cursor:pointer}
+.pg-label{font-size:.78rem;color:var(--ink-faint)}
+.mode-toggle{display:flex;gap:.5rem;margin-bottom:.75rem;align-items:center}
+.mode-toggle span{font-size:.72rem;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase}
+.toggle-btn{font-size:.72rem;padding:.35rem .8rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .12s}
+.toggle-btn.is-active{border-color:var(--ink);color:var(--ink);background:var(--paper-warm)}
+.osd-wrap{position:relative;border:1px solid var(--rule);background:#111;overflow:hidden;height:600px;cursor:crosshair}
+#osdEl{width:100%;height:100%}
+#selSvg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.sel-panel{margin-top:1rem;padding:1rem 1.25rem;border:1px solid var(--rule);background:var(--accent-bg)}
+.sel-panel-head{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem}
+.coords-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.85rem}
+.coord-box{background:var(--paper);border:1px solid var(--rule);padding:.5rem;text-align:center}
+.ck{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:.15rem}
+.cv{font-size:1rem;font-weight:500}
+.refine-details{margin-bottom:.85rem;border:1px solid var(--rule);border-radius:2px}
+.refine-summary{font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding:.5rem .75rem;cursor:pointer;list-style:none;user-select:none}
+.refine-summary::-webkit-details-marker{display:none}
+.refine-summary::after{content:' ↓';font-size:.6rem}
+details[open] .refine-summary::after{content:' ↑'}
+.refine-body{padding:.75rem;border-top:1px solid var(--rule);background:var(--paper)}
+.refine-coords{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.75rem}
+.refine-field label{display:block;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:.2rem}
+.refine-field input{width:100%;font-family:monospace;font-size:.8rem;padding:.4rem .5rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);outline:none}
+.refine-field input:focus{border-color:var(--accent-light)}
+.ratio-row{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
+.ratio-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);white-space:nowrap}
+.ratio-btn{font-size:.65rem;font-weight:500;letter-spacing:.06em;padding:.3rem .6rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .1s;white-space:nowrap}
+.ratio-btn:hover{border-color:var(--ink);color:var(--ink)}
+.ratio-btn.is-active{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.refine-res{font-size:.7rem;color:var(--ink-faint);font-family:monospace;min-height:1rem}
+
+.label-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.85rem}
+.label-row label{font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+.label-row input{flex:1;font-size:.82rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink);outline:none;font-family:var(--sans)}
+.label-row input:focus{border-color:var(--accent-light)}
+.url-block .ub-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.35rem}
+.url-row{display:flex;gap:.4rem}
+.url-box{flex:1;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink-mid);word-break:break-all;white-space:pre-wrap}
+.copy-btn{font-size:.68rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:0 .85rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;flex-shrink:0;transition:all .12s}
+.copy-btn:hover{border-color:var(--ink);color:var(--ink)}
+.copy-btn.is-copied{border-color:#3a7a4a;color:#3a7a4a}
+
+/* highlight mode */
+#highlightMode{display:none}
+.hl-title{font-family:var(--serif);font-size:2rem;font-weight:300;line-height:1.2;margin-bottom:.3rem}
+.hl-note{font-size:.85rem;color:var(--ink-faint);margin-bottom:1.75rem}
+.eyebrow{font-size:.68rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.5rem}
+.image-panel{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;margin-bottom:1.5rem}
+@media(max-width:620px){.image-panel{grid-template-columns:1fr}}
+.panel-label{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.45rem}
+.panel-img{display:block;width:100%;border:1px solid var(--rule);background:var(--paper-warm);min-height:80px}
+.ctx-wrap{position:relative}
+.ctx-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.meta-block{border-top:1px solid var(--rule);padding-top:1.25rem;margin-top:1.25rem}
+.meta-row{display:flex;gap:1rem;padding:.4rem 0;border-bottom:.5px solid var(--rule);font-size:.8rem}
+.mk{width:100px;flex-shrink:0;font-size:.65rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
+.mv{color:var(--ink-mid);word-break:break-all}
+.mv a{color:var(--accent);text-decoration:none}
+.mv a:hover{text-decoration:underline}
+.share-bar{margin-top:1.75rem;border-top:1px solid var(--rule);padding-top:1.1rem}
+.share-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.4rem}
+footer{border-top:1px solid var(--rule);padding:.9rem 2rem;font-size:.68rem;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem}
+footer a{color:var(--ink-faint);text-decoration:none}
+footer a:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <span class="masthead-title">IIIF Highlight</span>
+  <hr class="masthead-rule" aria-hidden="true">
+  <span class="masthead-sub">Presentation API 2 &amp; 3</span>
+</header>
+<main>
+  <div id="stateMsg" class="state" style="display:none"></div>
+
+  <!-- VIEWER MODE -->
+  <div id="viewerMode">
+    <div class="viewer-header">
+      <h1>Select a region to highlight</h1>
+      <p>Paste a page URL from a supported institution, or a direct IIIF manifest URL. Navigate to the right page, then drag a box over the area you want to share.</p>
+    </div>
+
+    <div class="input-row">
+      <input type="url" id="urlInput" placeholder="Page URL or manifest URL…" oninput="onUrlInput()" />
+      <button class="btn is-accent" onclick="handleLoad()">Load</button>
+    </div>
+    <div class="detected-platform" id="detectedPlatform"></div>
+    <p class="input-hint">
+      Supports CONTENTdm and Internet Archive page URLs, or any direct IIIF manifest URL.
+    </p>
+
+    <div class="page-nav" id="pageNav" style="display:none">
+      <button class="btn" onclick="goPage(-1)">&#8592;</button>
+      <select id="pageSelect" onchange="gotoPage(+this.value)"></select>
+      <button class="btn" onclick="goPage(1)">&#8594;</button>
+      <span class="pg-label" id="pgLabel"></span>
+    </div>
+    <div class="mode-toggle" id="modeToggle" style="display:none">
+      <span>Mouse:</span>
+      <button class="toggle-btn is-active" id="btnSelect" onclick="setMode('select')">&#9633; Select region</button>
+      <button class="toggle-btn" id="btnPan" onclick="setMode('pan')">&#10021; Pan / zoom</button>
+    </div>
+    <div class="osd-wrap" id="osdWrap" style="display:none">
+      <div id="osdEl"></div>
+      <svg id="selSvg" xmlns="http://www.w3.org/2000/svg">
+        <rect id="selRect" x="0" y="0" width="0" height="0"
+          fill="rgba(122,59,30,0.15)" stroke="#7a3b1e" stroke-width="1.5"
+          stroke-dasharray="5,3" vector-effect="non-scaling-stroke"/>
+      </svg>
+    </div>
+    <div class="sel-panel" id="selPanel" style="display:none">
+      <p class="sel-panel-head">Selected region</p>
+      <div class="coords-grid">
+        <div class="coord-box"><div class="ck">x</div><div class="cv" id="cx">—</div></div>
+        <div class="coord-box"><div class="ck">y</div><div class="cv" id="cy">—</div></div>
+        <div class="coord-box"><div class="ck">w</div><div class="cv" id="cw">—</div></div>
+        <div class="coord-box"><div class="ck">h</div><div class="cv" id="ch">—</div></div>
+      </div>
+
+      <!-- Refine selection — subtle, collapsed by default -->
+      <details class="refine-details">
+        <summary class="refine-summary">Refine selection</summary>
+        <div class="refine-body">
+          <div class="refine-coords">
+            <div class="refine-field">
+              <label>x</label>
+              <input type="number" id="refX" min="0" oninput="applyManualCoords()">
+            </div>
+            <div class="refine-field">
+              <label>y</label>
+              <input type="number" id="refY" min="0" oninput="applyManualCoords()">
+            </div>
+            <div class="refine-field">
+              <label>w</label>
+              <input type="number" id="refW" min="1" oninput="applyManualCoords()">
+            </div>
+            <div class="refine-field">
+              <label>h</label>
+              <input type="number" id="refH" min="1" oninput="applyManualCoords()">
+            </div>
+          </div>
+          <div class="ratio-row">
+            <span class="ratio-label">Constrain to:</span>
+            <button class="ratio-btn" onclick="applyRatio(null)">Free</button>
+            <button class="ratio-btn" onclick="applyRatio(9/16)">Phone 9:16</button>
+            <button class="ratio-btn" onclick="applyRatio(16/9)">Desktop 16:9</button>
+            <button class="ratio-btn" onclick="applyRatio(1)">Square 1:1</button>
+            <button class="ratio-btn" onclick="applyRatio(8.5/11)">Letter</button>
+            <button class="ratio-btn" onclick="applyRatio(1/Math.sqrt(2))">A4</button>
+          </div>
+          <div class="refine-res" id="refineRes"></div>
+        </div>
+      </details>
+
+      <div class="label-row">
+        <label for="labelInput">Label</label>
+        <input type="text" id="labelInput" placeholder="e.g. Geo. Costentenus" oninput="updateUrl()">
+      </div>
+      <div class="url-block">
+        <p class="ub-label">Shareable highlight link</p>
+        <div class="url-row">
+          <div class="url-box" id="generatedUrl"></div>
+          <button class="copy-btn" id="copyGenBtn" onclick="copyGenUrl()">Copy</button>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:.85rem">
+        <a class="btn is-accent" id="openHighlightBtn" href="#" target="_blank">Preview highlight ↗</a>
+        <a class="btn" id="fullResBtn" href="#" target="_blank" style="display:none">Full resolution ↗</a>
+        <button class="btn" onclick="clearSel()">Clear selection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIGHLIGHT MODE -->
+  <div id="highlightMode">
+    <p class="eyebrow" id="hlEyebrow">IIIF Document</p>
+    <h1 class="hl-title" id="hlTitle">—</h1>
+    <p class="hl-note" id="hlNote"></p>
+    <div class="image-panel">
+      <div>
+        <p class="panel-label">Selected region</p>
+        <img class="panel-img" id="cropImg" alt="Highlighted region">
+      </div>
+      <div>
+        <p class="panel-label">In context — page <span id="hlPageNum">—</span></p>
+        <div class="ctx-wrap">
+          <img class="panel-img" id="ctxImg" alt="Full page in context">
+          <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none">
+            <rect id="hlRect" x="0" y="0" width="0" height="0"
+              fill="rgba(122,59,30,0.18)" stroke="#7a3b1e" stroke-width="0.008"
+              vector-effect="non-scaling-stroke"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="meta-block" id="hlMeta"></div>
+    <div class="actions">
+      <a class="btn is-accent" id="hlSourceLink" href="#" target="_blank">View full document ↗</a>
+      <a class="btn" id="hlCanvasLink" href="#" target="_blank">Open this canvas ↗</a>
+      <a class="btn" id="hlFullResBtn" href="#" target="_blank">Full resolution ↗</a>
+      <button class="btn" onclick="switchToViewer()">Edit this selection</button>
+    </div>
+    <div class="share-bar">
+      <p class="share-label">Shareable link</p>
+      <div class="url-row">
+        <div class="url-box" id="hlShareUrl"></div>
+        <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
+      </div>
+    </div>
+  </div>
+</main>
+<footer>
+  <span>IIIF Highlight — works with any Presentation API 2 or 3 source</span>
+  <span>Built by <a href="https://github.com/whatiiif" target="_blank">Nate Moore</a> &middot; <a href="https://iiif.io" target="_blank">iiif.io ↗</a></span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/openseadragon.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ── utils ── */
+function $(id){ return document.getElementById(id); }
+function show(id,d){ $(id).style.display=d||'block'; }
+function hide(id){ $(id).style.display='none'; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function getLabel(raw){
+  if(!raw) return '';
+  if(typeof raw==='string') return raw;
+  if(Array.isArray(raw)) return getLabel(raw[0]);
+  if(typeof raw==='object'){
+    var v=raw.en||raw.none||(raw['@value']?[raw['@value']]:null)||Object.values(raw)[0];
+    return v?getLabel(v):'';
+  }
+  return String(raw);
+}
+function getCanvases(m){
+  if(m.sequences&&m.sequences[0]) return m.sequences[0].canvases||[];
+  return m.items||[];
+}
+function getServiceBase(canvas){
+  if(canvas.images&&canvas.images[0]){
+    var res=canvas.images[0].resource||{};
+    var svc=res.service;
+    if(svc){ var id=svc['@id']||svc.id; if(typeof id==='string'&&id) return id.replace(/\/+$/,''); }
+    var rid=res['@id']||res.id||'';
+    var m=rid.match(/^(.+)\/(?:full|[\d,]+)\//);
+    if(m) return m[1];
+    return rid.replace(/\/+$/,'');
+  }
+  if(canvas.items&&canvas.items[0]&&canvas.items[0].items&&canvas.items[0].items[0]){
+    var body=canvas.items[0].items[0].body||{};
+    var s=Array.isArray(body.service)?body.service[0]:body.service;
+    if(s){ var sid=s['@id']||s.id; if(typeof sid==='string'&&sid) return sid.replace(/\/+$/,''); }
+    var bid=body.id||body['@id']||'';
+    var m2=bid.match(/^(.+)\/(?:full|[\d,]+)\//);
+    if(m2) return m2[1];
+    return bid.replace(/\/+$/,'');
+  }
+  return null;
+}
+function iiifUrl(base,region,size){
+  return base.replace(/\/+$/,'')+'/'+region+'/'+(size||'800,')+'/0/default.jpg';
+}
+
+/* ══ PLATFORM DETECTION ══
+   Only CONTENTdm and Internet Archive are officially supported.
+   For other institutions paste the manifest URL directly.
+*/
+var PLATFORMS=[
+
+  // CONTENTdm — handles both *.contentdm.oclc.org and custom domains
+  // Page URL:  https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1
+  // Manifest:  https://digital.library.illinoisstate.edu/iiif/info/p15990coll5/5179/manifest.json
+  {
+    name:'CONTENTdm',
+    pattern:/\/digital\/collection\/([^\/]+)\/id\/(\d+)/,
+    toManifest:function(url){
+      var m=url.match(/^(https?:\/\/[^\/]+).*\/digital\/collection\/([^\/]+)\/id\/(\d+)/);
+      if(!m) return null;
+      return m[1]+'/iiif/info/'+m[2]+'/'+m[3]+'/manifest.json';
+    }
+  },
+
+  // Internet Archive
+  // Page URL:  https://archive.org/details/someidentifier
+  // Manifest:  https://iiif.archive.org/iiif/someidentifier/manifest.json
+  {
+    name:'Internet Archive',
+    pattern:/archive\.org\/details\/([^\/\?]+)/,
+    toManifest:function(url){
+      var m=url.match(/archive\.org\/details\/([^\/\?#]+)/);
+      if(!m) return null;
+      return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
+    }
+  },
+
+  // Direct manifest URL — ends in manifest.json or /manifest
+  {
+    name:'Direct manifest URL',
+    pattern:/manifest(\.json)?(\?|#|$)/,
+    toManifest:function(url){ return url; }
+  }
+];
+
+function detectPlatform(url){
+  for(var i=0;i<PLATFORMS.length;i++){
+    if(PLATFORMS[i].pattern.test(url)){
+      return PLATFORMS[i];
+    }
+  }
+  return null;
+}
+
+/* ── state ── */
+var manifest=null,canvases=[],currentIdx=0,viewer=null;
+var selState=null,mouseMode='select',dragging=false,dragStart=null;
+var resolvedManifestUrl='';
+
+/* ── URL params ── */
+var params=new URLSearchParams(location.search);
+var pManifest=params.get('manifest');
+var pCanvas=parseInt(params.get('canvas')||'0',10);
+var pXywh=params.get('xywh');
+var pLabel=params.get('label');
+
+if(pManifest && pXywh){
+  // Full highlight link — show the highlight view
+  show('stateMsg');
+  $('stateMsg').textContent='Resolving manifest…';
+  initHighlight();
+} else if(pManifest && !pXywh){
+  // Manifest only — go straight to viewer
+  show('viewerMode');
+  $('urlInput').value=pManifest;
+  resolvedManifestUrl=pManifest;
+  // Show a welcoming prompt above the viewer
+  var hint=document.createElement('div');
+  hint.id='sniffHint';
+  hint.style.cssText='background:var(--accent-bg);border:1px solid var(--accent-light);padding:.75rem 1rem;margin-bottom:1rem;font-size:.82rem;color:var(--ink-mid);line-height:1.6;';
+  hint.innerHTML='<strong style="color:var(--accent)">Manifest loaded.</strong> Navigate to the page you want, then drag a box over the region you\'d like to highlight. A shareable link will appear below your selection.';
+  var viewerEl=$('viewerMode');
+  viewerEl.insertBefore(hint, viewerEl.firstChild);
+  loadManifest(pManifest, pCanvas);
+} else {
+  show('viewerMode');
+}
+
+/* ── input hint ── */
+window.onUrlInput=function(){
+  var url=$('urlInput').value.trim();
+  var el=$('detectedPlatform');
+  if(!url){ el.textContent=''; el.className='detected-platform'; return; }
+  var p=detectPlatform(url);
+  if(p&&p.name!=='Direct manifest URL'){
+    el.textContent='Detected: '+p.name;
+    el.className='detected-platform is-found';
+  } else if(p&&p.name==='Direct manifest URL'){
+    el.textContent='Direct manifest URL';
+    el.className='detected-platform is-found';
+  } else {
+    el.textContent='Platform not recognized — will try as manifest URL';
+    el.className='detected-platform';
+  }
+};
+
+window.handleLoad=async function(){
+  var url=$('urlInput').value.trim();
+  if(!url) return;
+  var platform=detectPlatform(url);
+  var manifestUrl=platform?platform.toManifest(url):url;
+  if(!manifestUrl){ showErr('Could not construct a manifest URL from that address. Try pasting the manifest URL directly.'); return; }
+  resolvedManifestUrl=manifestUrl;
+  await loadManifest(manifestUrl);
+};
+
+/* ══ HIGHLIGHT MODE ══ */
+async function initHighlight(){
+  var result=await fetchManifest(pManifest);
+  if(!result.ok){
+    $('stateMsg').className='state is-err';
+    $('stateMsg').textContent='Could not load manifest: '+result.error+'. The source server may not permit cross-origin requests.';
+    return;
+  }
+  var m=result.data;
+  var cvs=getCanvases(m);
+  if(!cvs.length){ showErr('No canvases found.'); return; }
+  var idx=Math.min(pCanvas,cvs.length-1);
+  var canvas=cvs[idx];
+  var canvasId=canvas['@id']||canvas.id||'';
+  var manifestId=m['@id']||m.id||pManifest;
+  var mLabel=getLabel(m.label);
+  var cLabel=getLabel(canvas.label);
+  var cW=canvas.width||1000,cH=canvas.height||1400;
+  var svcBase=getServiceBase(canvas);
+  if(!svcBase){ showErr('Could not resolve image service.'); return; }
+
+  var region='full',rx=0,ry=0,rw=cW,rh=cH;
+  if(pXywh){
+    var pts=pXywh.split(',').map(Number);
+    if(pts.length===4&&pts.every(function(n){return !isNaN(n);})){
+      rx=pts[0];ry=pts[1];rw=pts[2];rh=pts[3];
+      region=rx+','+ry+','+rw+','+rh;
+    }
+  }
+
+  hide('stateMsg');
+  $('hlEyebrow').textContent=mLabel||'IIIF Document';
+  $('hlTitle').textContent=pLabel||cLabel||'Page '+(idx+1);
+  $('hlNote').textContent=pXywh
+    ?'Region '+region+' — canvas '+(idx+1)+' of '+cvs.length
+    :'Canvas '+(idx+1)+' of '+cvs.length;
+  $('hlPageNum').textContent=idx+1;
+
+  // Use Worker-proxied URLs if available (solves CORS), otherwise direct IIIF
+  var proxy=window.__WHATIIIF_PROXY__||null;
+  $('cropImg').src=proxy?proxy.crop:(pXywh?iiifUrl(svcBase,region,'800,'):iiifUrl(svcBase,'full','800,'));
+  $('ctxImg').src=proxy?proxy.ctx:iiifUrl(svcBase,'full','600,');
+
+  if(pXywh){
+    var hr=$('hlRect');
+    hr.setAttribute('x',rx/cW);hr.setAttribute('y',ry/cH);
+    hr.setAttribute('width',rw/cW);hr.setAttribute('height',rh/cH);
+  }
+
+  var meta=$('hlMeta');
+  function row(k,v){var d=document.createElement('div');d.className='meta-row';d.innerHTML='<span class="mk">'+k+'</span><span class="mv">'+v+'</span>';meta.appendChild(d);}
+  if(mLabel) row('Document',esc(mLabel));
+  if(cLabel) row('Page',esc(cLabel));
+  if(pXywh)  row('Region','x&nbsp;'+rx+' y&nbsp;'+ry+' w&nbsp;'+rw+' h&nbsp;'+rh+' px');
+  row('Manifest','<a href="'+esc(pManifest)+'" target="_blank">'+esc(pManifest)+'</a>');
+  row('Canvas','<a href="'+esc(canvasId)+'" target="_blank">'+esc(canvasId||'—')+'</a>');
+  if(pXywh) row('Fragment',esc(canvasId+'#xywh='+pXywh));
+
+  $('hlSourceLink').href=manifestId;
+  $('hlCanvasLink').href=canvasId||manifestId;
+  $('hlShareUrl').textContent=location.href;
+
+  // Full resolution crop — region at max quality, opens as plain image
+  var fullResUrl=pXywh
+    ?iiifUrl(svcBase,region,'full')
+    :iiifUrl(svcBase,'full','full');
+  $('hlFullResBtn').href=fullResUrl;
+  if(!pXywh) $('hlFullResBtn').textContent='Full resolution page ↗';
+
+  show('highlightMode');
+}
+
+function showErr(msg){
+  $('stateMsg').className='state is-err';
+  $('stateMsg').textContent=msg;
+  show('stateMsg');
+}
+
+window.switchToViewer=function(){
+  hide('highlightMode');
+  show('viewerMode');
+  if(pManifest){
+    $('urlInput').value=pManifest;
+    resolvedManifestUrl=pManifest;
+    loadManifest(pManifest,pCanvas);
+  }
+};
+window.copyHlUrl=function(){ copyText($('hlShareUrl').textContent,'hlCopyBtn'); };
+
+/* ══ VIEWER MODE ══ */
+async function loadManifest(url,jumpTo){
+  $('stateMsg').className='state';
+  $('stateMsg').textContent='Loading…';
+  show('stateMsg');
+  var result=await fetchManifest(url);
+  if(!result.ok){
+    showErr('Could not load manifest: '+result.error+'. The server may not allow cross-origin requests — try pasting the manifest URL directly.');
+    return;
+  }
+  manifest=result.data;
+  canvases=getCanvases(manifest);
+  if(!canvases.length){ showErr('No canvases found in manifest.'); return; }
+  hide('stateMsg');
+  buildSelect();
+  gotoPage(typeof jumpTo==='number'?jumpTo:0);
+}
+
+async function fetchManifest(url){
+  // Try direct fetch first
+  try{
+    var r=await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var data=await r.json();
+    return {ok:true,data:data};
+  } catch(e){
+    // Fall back to Worker manifest proxy
+    try{
+      var proxyUrl='/manifest-proxy?url='+encodeURIComponent(url);
+      var r2=await fetch(proxyUrl);
+      if(!r2.ok) throw new Error('HTTP '+r2.status);
+      var data2=await r2.json();
+      return {ok:true,data:data2};
+    } catch(e2){
+      return {ok:false,error:e2.message};
+    }
+  }
+}
+
+function buildSelect(){
+  var sel=$('pageSelect');sel.innerHTML='';
+  canvases.forEach(function(c,i){
+    var o=document.createElement('option');o.value=i;
+    var l=getLabel(c.label);
+    o.text='Page '+(i+1)+(l?' — '+l.slice(0,50):'');
+    sel.appendChild(o);
+  });
+  show('pageNav','flex');
+  show('modeToggle','flex');
+}
+
+window.gotoPage=function(n){
+  n=Math.max(0,Math.min(n,canvases.length-1));
+  currentIdx=n;
+  $('pageSelect').value=n;
+  $('pgLabel').textContent=(n+1)+' / '+canvases.length;
+  clearSel();
+  loadOSD(canvases[n]);
+};
+window.goPage=function(d){ gotoPage(currentIdx+d); };
+
+function loadOSD(canvas){
+  var base=getServiceBase(canvas);
+  if(!base){ showErr('No image service found for this canvas.'); return; }
+  var ts=base+'/info.json';
+  show('osdWrap');
+  if(viewer){viewer.destroy();viewer=null;}
+  viewer=OpenSeadragon({
+    id:'osdEl',
+    prefixUrl:'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/images/',
+    tileSources:ts,
+    showNavigationControl:true,
+    showNavigator:true,
+    navigatorPosition:'BOTTOM_RIGHT',
+    gestureSettingsMouse:{clickToZoom:false},
+    gestureSettingsTouch:{clickToZoom:false},
+  });
+  applyMouseMode();
+  viewer.addHandler('open',function(){
+    var c=viewer.canvas;
+    c.addEventListener('mousedown',onDragStart);
+    c.addEventListener('mousemove',onDragMove);
+    c.addEventListener('mouseup',onDragEnd);
+    c.addEventListener('mouseleave',onDragEnd);
+    c.addEventListener('touchstart',onTouchStart,{passive:false});
+    c.addEventListener('touchmove',onTouchMove,{passive:false});
+    c.addEventListener('touchend',onTouchEnd);
+  });
+}
+
+window.setMode=function(mode){
+  mouseMode=mode;
+  $('btnSelect').classList.toggle('is-active',mode==='select');
+  $('btnPan').classList.toggle('is-active',mode==='pan');
+  applyMouseMode();
+};
+function applyMouseMode(){
+  if(!viewer) return;
+  viewer.setMouseNavEnabled(mouseMode==='pan');
+  $('osdWrap').style.cursor=mouseMode==='pan'?'grab':'crosshair';
+}
+
+function wrapOffset(cx,cy){
+  var r=$('osdWrap').getBoundingClientRect();
+  return {x:cx-r.left,y:cy-r.top};
+}
+function toImgCoords(sx,sy){
+  var pt=viewer.viewport.pointFromPixel(new OpenSeadragon.Point(sx,sy));
+  return viewer.viewport.viewportToImageCoordinates(pt);
+}
+
+function onDragStart(e){if(mouseMode!=='select')return;dragging=true;dragStart=wrapOffset(e.clientX,e.clientY);e.preventDefault();}
+function onDragMove(e){if(!dragging||mouseMode!=='select')return;drawRect(dragStart,wrapOffset(e.clientX,e.clientY));}
+function onDragEnd(e){if(!dragging)return;dragging=false;finalize(dragStart,wrapOffset(e.clientX||dragStart.x,e.clientY||dragStart.y));}
+function onTouchStart(e){if(mouseMode!=='select')return;dragging=true;dragStart=wrapOffset(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();}
+function onTouchMove(e){if(!dragging||mouseMode!=='select')return;drawRect(dragStart,wrapOffset(e.touches[0].clientX,e.touches[0].clientY));e.preventDefault();}
+function onTouchEnd(e){if(!dragging)return;dragging=false;var t=e.changedTouches[0];finalize(dragStart,wrapOffset(t.clientX,t.clientY));}
+
+function drawRect(a,b){
+  var r=$('selRect');
+  r.setAttribute('x',Math.min(a.x,b.x));r.setAttribute('y',Math.min(a.y,b.y));
+  r.setAttribute('width',Math.abs(b.x-a.x));r.setAttribute('height',Math.abs(b.y-a.y));
+}
+function finalize(a,b){
+  if(Math.abs(b.x-a.x)<5||Math.abs(b.y-a.y)<5){clearSel();return;}
+  var p1=toImgCoords(Math.min(a.x,b.x),Math.min(a.y,b.y));
+  var p2=toImgCoords(Math.max(a.x,b.x),Math.max(a.y,b.y));
+  var canvas=canvases[currentIdx];
+  var cW=canvas.width||1000,cH=canvas.height||1400;
+  var rx=Math.max(0,Math.round(p1.x));
+  var ry=Math.max(0,Math.round(p1.y));
+  var rw=Math.min(Math.round(p2.x-p1.x),cW-rx);
+  var rh=Math.min(Math.round(p2.y-p1.y),cH-ry);
+  if(rw<1||rh<1){clearSel();return;}
+  selState={rx:rx,ry:ry,rw:rw,rh:rh};
+  // Reset ratio buttons
+  document.querySelectorAll('.ratio-btn').forEach(function(b){b.classList.remove('is-active');});
+  document.querySelector('.ratio-btn').classList.add('is-active'); // Free
+  show('selPanel');
+  updateCoordDisplays();
+}
+
+window.clearSel=function(){
+  selState=null;
+  ['x','y','width','height'].forEach(function(a){$('selRect').setAttribute(a,'0');});
+  hide('selPanel');
+  $('fullResBtn').style.display='none';
+};
+function updateCoordDisplays(){
+  $('cx').textContent=selState.rx;
+  $('cy').textContent=selState.ry;
+  $('cw').textContent=selState.rw;
+  $('ch').textContent=selState.rh;
+  $('refX').value=selState.rx;
+  $('refY').value=selState.ry;
+  $('refW').value=selState.rw;
+  $('refH').value=selState.rh;
+  $('refineRes').textContent=selState.rw+' × '+selState.rh+' px at full resolution';
+  updateUrl();
+}
+
+window.applyManualCoords=function(){
+  var canvas=canvases[currentIdx];
+  var cW=canvas.width||1000,cH=canvas.height||1400;
+  var rx=Math.max(0,parseInt($('refX').value)||0);
+  var ry=Math.max(0,parseInt($('refY').value)||0);
+  var rw=Math.min(Math.max(1,parseInt($('refW').value)||1),cW-rx);
+  var rh=Math.min(Math.max(1,parseInt($('refH').value)||1),cH-ry);
+  selState={rx:rx,ry:ry,rw:rw,rh:rh};
+  updateCoordDisplays();
+  redrawSelRect();
+};
+
+window.applyRatio=function(ratio){
+  document.querySelectorAll('.ratio-btn').forEach(function(b){b.classList.remove('is-active');});
+  event.target.classList.add('is-active');
+  if(ratio===null){updateUrl();return;}
+  var canvas=canvases[currentIdx];
+  var cH=canvas.height||1400;
+  var newH=Math.min(Math.round(selState.rw/ratio),cH-selState.ry);
+  selState.rh=newH;
+  updateCoordDisplays();
+  redrawSelRect();
+};
+
+function redrawSelRect(){
+  if(!viewer) return;
+  var vp=viewer.viewport;
+  var p1=vp.imageToViewportCoordinates(new OpenSeadragon.Point(selState.rx,selState.ry));
+  var p2=vp.imageToViewportCoordinates(new OpenSeadragon.Point(selState.rx+selState.rw,selState.ry+selState.rh));
+  var sp1=vp.viewportToViewerElementCoordinates(p1);
+  var sp2=vp.viewportToViewerElementCoordinates(p2);
+  var r=$('selRect');
+  r.setAttribute('x',Math.min(sp1.x,sp2.x));
+  r.setAttribute('y',Math.min(sp1.y,sp2.y));
+  r.setAttribute('width',Math.abs(sp2.x-sp1.x));
+  r.setAttribute('height',Math.abs(sp2.y-sp1.y));
+}
+
+window.updateUrl=function(){
+  if(!selState||!manifest) return;
+  var mUrl=resolvedManifestUrl||$('urlInput').value.trim();
+  var lbl=$('labelInput').value.trim();
+  var p=new URLSearchParams({manifest:mUrl,canvas:currentIdx,xywh:selState.rx+','+selState.ry+','+selState.rw+','+selState.rh});
+  if(lbl) p.set('label',lbl);
+  var url=location.origin+location.pathname+'?'+p.toString();
+  $('generatedUrl').textContent=url;
+  $('openHighlightBtn').href=url;
+
+  // Full resolution crop button
+  var canvas=canvases[currentIdx];
+  var svcBase=getServiceBase(canvas);
+  if(svcBase){
+    var region=selState.rx+','+selState.ry+','+selState.rw+','+selState.rh;
+    var fullResUrl=iiifUrl(svcBase,region,'full');
+    $('fullResBtn').href=fullResUrl;
+    $('fullResBtn').style.display='';
+  }
+};
+window.copyGenUrl=function(){ copyText($('generatedUrl').textContent,'copyGenBtn'); };
+
+function copyText(text,btnId){
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=$(btnId);btn.textContent='Copied';btn.classList.add('is-copied');
+    setTimeout(function(){btn.textContent='Copy';btn.classList.remove('is-copied');},2000);
+  });
+}
+})();
+</script>
+</body>
+</html>
