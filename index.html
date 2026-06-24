@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IIIF Highlight</title>
+<title>whatiiif</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAEKElEQVRYhe2WS2yUVRTHf+f7Zj5nyrTDSDszQB9BaxOwAWtRkBaURDFGSXRhTBQNj0goGxNDCEESq1YeiQkLCCQkSCAuIMTEaAxKoo6hFNhAfSQiVCid8rIFYVr6msdx0U6ZztyWlo0L+a/mnsf/f+6559754AH+75DMxerqaneht+N9UV5XIU9Um1Ip+7MtJ1rP3g/5pvllM1NWah2WPCNKjyKHHPel7fUREjkF1IM1UFv6NcrLWTx9qK7Y3BQ9OBHxjbVlb6K6F/Bkub5xjre9Wg8pACttHagpW2kQB/Ag8sXGmrLF4xXfVFv6PKoHDOIASwdqy5anF670D0HX6OicNui+o58sfyHPlfcKFktQKoDQoFuvgZxD5GhP1z/fRn46thfEHpVNtQ74fFAXWLckNMm581AXWTORhtfrpbyiguKS4qTIGMSAqiYvt7fb587+SV9f32hhqd5Uyrf9RHuvC8DT7YRTYhYPBoPMrnoCx3GGOjE2RMQuLikhFArRfLqZjo6/TWHWJLcdBi5aAHHLHTdFhcIhqp+emxafENyOw9x5TxGeGjb6B/oTcRgaQq/rwhVgRL/8/gKqqqsRsQzp44OIMKeqivyCgmxX78XSy1eHC6iPkEDl1N1EmPl4JZZ1/+Jp2LZN5exKJOOAFT11+DBJyDjTRWV+B1gKUFRURHnFYyOITra08/GXEaLqw7GUsM8zbr/X6+XmjZv09vQMVSCbG6O3Tw93ACCW7+wHbQMIT5uWs5N9kTPcutPHvNrnaIx2Tdg/bfowZ2u33zmQXgwXsONIS7+l1gogGXg4kEOQxratn/LrL2cm7A8EAgAJS6wVO4609OcUANDQdOlHVJd5PLkP2KrFVQR8XgI+L6sWV03Y7/F6Ad5qaGyNZNqNd//YlrouEfEZtwjE4wmaL0Q53XoNQXhyRpg5M4pxu12jpaBo18INu3OugzFDxGoDnZVtT6WUjuvX+b3tGntOnkd18PH+4WyU1fNvUVkapigUwrJy9yUil0xaxnsm6EmTvbOzg1gsBoY/DUGJxWLc6Ow0paLKCZPd2AEVOYjqymx7d2xwuksDebw7v5w/rt8GYFZwMiWT8wDoisUoChaZOA+ZtIwzoIoc37Y2AizKtF9o+YtkMmlKGYZt2zxS/miWih6vWb97oUhu78xHIKhYvAf0Ztrz83NmKAeGmB5L7TqT+KgFANSs39Ws8Abc/XwqDE6hwO9nxLuaUXWB309hcEqmNakqyxZs2PnbaDrGI8hE49a6l0AOAIVpWzyRoKe7m0R8sDaX20Wez4fbNWKkOiystxds2Pn9WPz3LACgqWHN9JTL+gh4B3CPHS0Diu7XZOLDRR/suXov7nEVkMbPDWtLXG55TdEXhz7Jpg6RXFHhvKh+l0jIV89u2hWdCO8DPMB/in8BBwpp4I4vLYcAAAAASUVORK5CYII=">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -113,7 +114,7 @@ footer a:hover{color:var(--ink)}
     </div>
     <div class="detected-platform" id="detectedPlatform"></div>
     <p class="input-hint">
-      Supports CONTENTdm, Internet Archive, Omeka S, Illinois Digital Archives, CARLI, Digital Commonwealth, DPLA, and direct manifest URLs.
+      Supports CONTENTdm, Internet Archive, Omeka S, Illinois Digital Archives, CARLI, Digital Commonwealth, DPLA, Yale Digital Collections, and direct manifest URLs.
       Can't find your manifest? Try <a href="https://sniiiffer.example.com" target="_blank">Sniiiffer</a>.
     </p>
 
@@ -364,6 +365,18 @@ var PLATFORMS=[
     }
   },
 
+  // Yale Digital Collections
+  // Page URL:  https://collections.library.yale.edu/catalog/10696072
+  // Manifest:  https://collections.library.yale.edu/manifests/10696072
+  {
+    name:'Yale Digital Collections',
+    pattern:/collections\.library\.yale\.edu\/catalog\/(\d+)/,
+    toManifest:function(url){
+      var m=url.match(/collections\.library\.yale\.edu\/catalog\/(\d+)/);
+      return m?'https://collections.library.yale.edu/manifests/'+m[1]:null;
+    }
+  },
+
   // Gallica (BnF)
   // Page URL:  https://gallica.bnf.fr/ark:/12148/bpt6k9907264
   // Manifest:  https://gallica.bnf.fr/iiif/ark:/12148/bpt6k9907264/manifest.json
@@ -406,10 +419,24 @@ var pCanvas=parseInt(params.get('canvas')||'0',10);
 var pXywh=params.get('xywh');
 var pLabel=params.get('label');
 
-if(pManifest){
+if(pManifest && pXywh){
+  // Full highlight link — show the highlight view
   show('stateMsg');
   $('stateMsg').textContent='Resolving manifest…';
   initHighlight();
+} else if(pManifest && !pXywh){
+  // Manifest only (e.g. opened from Sniiiffer) — go straight to viewer
+  show('viewerMode');
+  $('urlInput').value=pManifest;
+  resolvedManifestUrl=pManifest;
+  // Show a welcoming prompt above the viewer
+  var hint=document.createElement('div');
+  hint.id='sniffHint';
+  hint.style.cssText='background:var(--accent-bg);border:1px solid var(--accent-light);padding:.75rem 1rem;margin-bottom:1rem;font-size:.82rem;color:var(--ink-mid);line-height:1.6;';
+  hint.innerHTML='<strong style="color:var(--accent)">Manifest loaded.</strong> Navigate to the page you want, then drag a box over the region you\'d like to highlight. A shareable link will appear below your selection.';
+  var viewerEl=$('viewerMode');
+  viewerEl.insertBefore(hint, viewerEl.firstChild);
+  loadManifest(pManifest, pCanvas);
 } else {
   show('viewerMode');
 }
