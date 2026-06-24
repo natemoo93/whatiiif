@@ -6,11 +6,11 @@ A lightweight tool for creating shareable deep links to specific regions of digi
 
 IIIF (International Image Interoperability Framework) has made digitized primary sources accessible across thousands of institutional repositories. But sharing a precise reference to something specific like a name in a census, a passage in a manuscript, an entry in a travel log, still means either sending a vague "it's on page 6 somewhere" or hoping your viewer's URL updates as you navigate.
 
-Whatiiif closes that gap. Paste a page URL from a supported institution, draw a box around what you want to share, and get a permanent link that shows anyone exactly what you're pointing at. No viewer software required.
+Whatiiif closes that gap. Paste a JSON manifest a page URL from a supported institution, draw a box around what you want to share, and get a permanent link that shows anyone exactly what you're pointing at. No viewer software required.
 
 ## How it works
 
-- Accepts page URLs from supported platforms (CONTENTdm, Internet Archive, Omeka S, Europeana, Gallica, DPLA, and others) or direct IIIF manifest URLs
+- Accepts page URLs from supported platforms (CONTENTdm, Internet Archive) or direct IIIF manifest URLs
 - Detects the platform and resolves the IIIF manifest automatically
 - Loads the document in a zoomable viewer powered by OpenSeadragon
 - Lets you drag a selection box over any region of any page
