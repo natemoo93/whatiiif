@@ -555,6 +555,7 @@ async function fetchManifest(url){
       var data2=await r2.json();
       return {ok:true,data:data2};
     } catch(e2){
+      try{fetch('/log-error?url='+encodeURIComponent(url)+'&reason='+encodeURIComponent(e2.message));}catch(x){}
       return {ok:false,error:e2.message};
     }
   }
