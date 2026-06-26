@@ -344,7 +344,18 @@ var PLATFORMS=[
       return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
     }
   },
-
+// Library of Congress
+  // Page URL:  https://www.loc.gov/item/06016152/
+  // Manifest:  https://www.loc.gov/item/06016152/manifest.json
+  {
+    name:'Library of Congress',
+    pattern:/loc\.gov\/item\/([^\/\?]+)/,
+    toManifest:function(url){
+      var m=url.match(/(https?:\/\/www\.loc\.gov\/item\/[^\/\?#]+)/);
+      if(!m) return null;
+      return m[1].replace(/\/+$/,'')+'/manifest.json';
+    }
+  },
   // Direct manifest URL — ends in manifest.json or /manifest
   {
     name:'Direct manifest URL',
