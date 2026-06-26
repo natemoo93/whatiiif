@@ -133,8 +133,12 @@ footer a:hover{color:var(--ink)}
     <p class="input-hint">
       Supports CONTENTdm and Internet Archive page URLs, or any direct IIIF manifest URL.
     </p>
-
-    <div class="page-nav" id="pageNav" style="display:none">
+    <p class="input-hint" style="margin-top:.3rem">
+  Try it with one of these sample items:
+  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book</a> ·
+  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://archive.org/details/mobydickorwhale01melv';onUrlInput();">Moby Dick (Internet Archive)</a>
+</p>
+ <div class="page-nav" id="pageNav" style="display:none">
       <button class="btn" onclick="goPage(-1)">&#8592;</button>
       <select id="pageSelect" onchange="gotoPage(+this.value)"></select>
       <button class="btn" onclick="goPage(1)">&#8594;</button>
