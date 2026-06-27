@@ -458,6 +458,7 @@ function detectPlatform(url){
 var manifest=null,canvases=[],currentIdx=0,viewer=null;
 var selState=null,mouseMode='select',dragging=false,dragStart=null;
 var resolvedManifestUrl='';
+var originalInputUrl='';
 
 /* ── URL params ── */
 var params=new URLSearchParams(location.search);
@@ -508,6 +509,7 @@ window.onUrlInput=function(){
 
 window.handleLoad=async function(){
   var url=$('urlInput').value.trim();
+  originalInputUrl=url;
   if(!url) return;
   var platform=detectPlatform(url);
   var manifestUrl=platform?await platform.toManifest(url):url;
@@ -579,7 +581,17 @@ async function initHighlight(){
   row('Manifest','<a href="'+esc(pManifest)+'" target="_blank">'+esc(pManifest)+'</a> <button onclick="navigator.clipboard.writeText(\''+esc(pManifest)+'\')" style="font-size:.6rem;padding:.2rem .5rem;border:1px solid var(--rule);background:transparent;cursor:pointer;color:var(--ink-faint);margin-left:.4rem">Copy</button>');
   if(pXywh) row('Fragment',esc(canvasId+'#xywh='+pXywh));
 
-  $('hlSourceLink').href=manifestId;
+  // Resolve institutional page URL from canvas or manifest related/homepage fields
+  var instUrl=(function(){
+    var c=canvas;
+    var rel=c.related||(c.homepage&&(Array.isArray(c.homepage)?c.homepage[0]:c.homepage))||null;
+    if(rel){ var ru=rel['@id']||rel.id||rel; if(typeof ru==='string'&&ru.startsWith('http')) return ru; }
+    var mRel=m.related||(m.homepage&&(Array.isArray(m.homepage)?m.homepage[0]:m.homepage))||null;
+    if(mRel){ var mru=mRel['@id']||mRel.id||mRel; if(typeof mru==='string'&&mru.startsWith('http')) return mru; }
+    return originalInputUrl||manifestId;
+  })();
+  $('hlSourceLink').href=instUrl;
+  $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').textContent=location.href;
 
   // Full resolution crop — region at max quality, opens as plain image
