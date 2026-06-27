@@ -380,8 +380,10 @@ var PLATFORMS=[
     toManifest:function(url){
       var m=url.match(/library\.si\.edu\/digital-library\/book\/([^\/\?#]+)/);
       if(!m) return null;
-      return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
+      var manifestUrl='https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
+      return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
     }
+  },
   },
   // Yale Beinecke Library
   // Page URL:  https://collections.library.yale.edu/catalog/2002046
@@ -390,10 +392,11 @@ var PLATFORMS=[
     name:'Yale Library',
     pattern:/collections\.library\.yale\.edu\/catalog\/(\d+)/,
     toManifest:function(url){
-      var m=url.match(/collections\.library\.yale\.edu\/catalog\/(\d+)/);
-      if(!m) return null;
-      return 'https://collections.library.yale.edu/manifests/'+m[1];
-    }
+  var m=url.match(/collections\.library\.yale\.edu\/catalog\/(\d+)/);
+  if(!m) return null;
+  var manifestUrl='https://collections.library.yale.edu/manifests/'+m[1];
+  return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
+}
   },
   // Direct manifest URL — ends in manifest.json or /manifest
   {
