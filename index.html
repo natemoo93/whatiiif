@@ -371,6 +371,18 @@ var PLATFORMS=[
       return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
     }
   },
+  // Smithsonian Libraries
+  // Page URL:  https://library.si.edu/digital-library/book/volume100mast
+  // Manifest:  https://iiif.archive.org/iiif/volume100mast/manifest.json
+  {
+    name:'Smithsonian Libraries',
+    pattern:/library\.si\.edu\/digital-library\/book\/([^\/\?#]+)/,
+    toManifest:function(url){
+      var m=url.match(/library\.si\.edu\/digital-library\/book\/([^\/\?#]+)/);
+      if(!m) return null;
+      return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
+    }
+  },
   // Direct manifest URL — ends in manifest.json or /manifest
   {
     name:'Direct manifest URL',
