@@ -293,6 +293,11 @@ function getCanvases(m){
   if(m.sequences&&m.sequences[0]) return m.sequences[0].canvases||[];
   return m.items||[];
 }
+function fullSizeParam(svcBase){
+  // IIIF v3 servers use 'max' instead of 'full' for full resolution
+  return (svcBase&&svcBase.includes('/iiif/3/'))?'max':'full';
+}
+
 function getServiceBase(canvas){
   if(canvas.images&&canvas.images[0]){
     var res=canvas.images[0].resource||{};
@@ -595,8 +600,8 @@ async function initHighlight(){
 
   // Full resolution crop — region at max quality, opens as plain image
   var fullResUrl=pXywh
-    ?iiifUrl(svcBase,region,'full')
-    :iiifUrl(svcBase,'full','full');
+    ?iiifUrl(svcBase,region,fullSizeParam(svcBase))
+    :iiifUrl(svcBase,'full',fullSizeParam(svcBase));
   $('hlFullResBtn').dataset.url=fullResUrl;
   if(!pXywh) $('hlFullResBtn').textContent='Full resolution page ↓';
 
@@ -697,7 +702,7 @@ function showPageLink(){
   var canvas=canvases[currentIdx];
   var svcBase=getServiceBase(canvas);
   if(svcBase){
-    $('fullResBtn').dataset.url=svcBase+'/full/full/0/default.jpg';
+    $('fullResBtn').dataset.url=svcBase+'/full/'+fullSizeParam(svcBase)+'/0/default.jpg';
     $('fullResBtn').style.display='';
   }
   // Generate page-level link
@@ -893,7 +898,7 @@ window.updateUrl=function(){
   var svcBase=getServiceBase(canvas);
   if(svcBase){
     var region=selState.rx+','+selState.ry+','+selState.rw+','+selState.rh;
-    var fullResUrl=iiifUrl(svcBase,region,'full');
+    var fullResUrl=iiifUrl(svcBase,region,fullSizeParam(svcBase));
     $('fullResBtn').dataset.url=fullResUrl;
     $('fullResBtn').style.display='';
   }
