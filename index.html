@@ -517,7 +517,6 @@ window.handleLoad=async function(){
   resolvedManifestUrl=manifestUrl;
   // Update input to show resolved manifest URL if it differs from what was pasted
   if(manifestUrl!==url){
-    $('urlInput').value=manifestUrl;
     $('detectedPlatform').textContent='Resolved from '+platform.name;
     $('detectedPlatform').className='detected-platform is-found';
   }
