@@ -408,15 +408,41 @@ var PLATFORMS=[
 
 
 /* ── populate platform list ── */
+var PLATFORM_LINKS = {
+  'Library of Congress': 'https://www.loc.gov/collections/',
+  'Internet Archive': 'https://archive.org/search',
+  'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
+  'Smithsonian Libraries': 'https://library.si.edu/digital-library',
+  'Yale Library': 'https://collections.library.yale.edu/',
+};
+var EXTRA_INSTITUTIONS = [
+  { name: 'CARLI Digital Collections', url: 'https://collections.carli.illinois.edu/' },
+  { name: 'Illinois State University Digital Collections', url: 'https://digital.library.illinoisstate.edu/digital/' },
+];
 (function(){
   var list=document.getElementById('platformList');
   if(!list) return;
   PLATFORMS.forEach(function(p){
-    if(p.name==='Direct manifest URL') return;
+    if(p.name==='Direct manifest URL'||p.name==='CONTENTdm') return;
     var li=document.createElement('li');
-    li.textContent='✓ '+p.name;
+    var url=PLATFORM_LINKS[p.name];
+    if(url){
+      li.innerHTML='✓ <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--accent)">'+p.name+'</a>';
+    } else {
+      li.textContent='✓ '+p.name;
+    }
     list.appendChild(li);
   });
+  EXTRA_INSTITUTIONS.forEach(function(inst){
+    var li=document.createElement('li');
+    li.innerHTML='✓ <a href="'+inst.url+'" target="_blank" rel="noopener" style="color:var(--accent)">'+inst.name+'</a>';
+    list.appendChild(li);
+  });
+  var li=document.createElement('li');
+  li.style.color='var(--ink-faint)';
+  li.style.fontSize='.72rem';
+  li.textContent='✓ Any other CONTENTdm-hosted institution';
+  list.appendChild(li);
 })();
 
 function detectPlatform(url){
