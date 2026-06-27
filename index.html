@@ -356,6 +356,21 @@ var PLATFORMS=[
       return m[1].replace(/\/+$/,'')+'/manifest.json';
     }
   },
+  // Biodiversity Heritage Library
+  // Page URL:  https://www.biodiversitylibrary.org/item/99509
+  // Manifest:  via Archive.org identifier scraped from page
+  {
+    name:'Biodiversity Heritage Library',
+    pattern:/biodiversitylibrary\.org\/(item|bibliography)\/(\d+)/,
+    toManifest:async function(url){
+      var proxyUrl='/manifest-proxy?url='+encodeURIComponent(url);
+      var r=await fetch(proxyUrl);
+      var html=await r.text();
+      var m=html.match(/archive\.org\/details\/([^"]+)/);
+      if(!m) return null;
+      return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
+    }
+  },
   // Direct manifest URL — ends in manifest.json or /manifest
   {
     name:'Direct manifest URL',
@@ -429,7 +444,7 @@ window.handleLoad=async function(){
   var url=$('urlInput').value.trim();
   if(!url) return;
   var platform=detectPlatform(url);
-  var manifestUrl=platform?platform.toManifest(url):url;
+  var manifestUrl=platform?await platform.toManifest(url):url;
   if(!manifestUrl){ showErr('Could not construct a manifest URL from that address. Try pasting the manifest URL directly.'); return; }
   resolvedManifestUrl=manifestUrl;
   // Update input to show resolved manifest URL if it differs from what was pasted
