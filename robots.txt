@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /proxy
+Disallow: /manifest-proxy
+Disallow: /log-error
