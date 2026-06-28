@@ -363,7 +363,38 @@ var PLATFORMS=[
     toManifest:function(url){
       var m=url.match(/(https?:\/\/www\.loc\.gov\/item\/[^\/\?#]+)/);
       if(!m) return null;
-      return m[1].replace(/\/+$/,'')+'/manifest.json';
+      var manifestUrl=m[1].replace(/\/+$/,'')+'/manifest.json';
+      return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
+    }
+  },
+  // Library of Congress — newspaper resource URLs (Chronicling America)
+  // Page URL:  https://www.loc.gov/resource/sn83045293/1926-06-27/ed-1/
+  // Manifest:  https://www.loc.gov/item/sn83045293/1926-06-27/ed-1/manifest.json
+  {
+    name:'Chronicling America',
+    pattern:/loc\.gov\/resource\/(sn\d+)\/([\d-]+)\/(ed-\d+)/,
+    toManifest:function(url){
+      var m=url.match(/loc\.gov\/resource\/(sn\d+)\/([\d-]+)\/(ed-\d+)/);
+      if(!m) return null;
+      var manifestUrl='https://www.loc.gov/item/'+m[1]+'/'+m[2]+'/'+m[3]+'/manifest.json';
+      return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
+    }
+  },
+  // Library of Congress — non-newspaper resource URLs
+  // Page URL:  https://www.loc.gov/resource/amedhamid2.437039537/
+  // Manifest:  https://www.loc.gov/item/{lccn}/manifest.json via metadata lookup
+  {
+    name:'Library of Congress',
+    pattern:/loc\.gov\/resource\/(?!sn\d)([^\/\?]+)/,
+    toManifest:async function(url){
+      var base=url.match(/(https?:\/\/www\.loc\.gov\/resource\/[^\/\?#]+)/);
+      if(!base) return null;
+      var r=await fetch('/manifest-proxy?url='+encodeURIComponent(base[1].replace(/\/+$/,'')+'/?fo=json'));
+      var data=await r.json();
+      var lccn=data.segments&&data.segments[0]&&data.segments[0].number_lccn&&data.segments[0].number_lccn[0];
+      if(!lccn) return null;
+      var manifestUrl='https://www.loc.gov/item/'+lccn+'/manifest.json';
+      return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
     }
   },
   // Biodiversity Heritage Library
@@ -417,6 +448,8 @@ var PLATFORM_LINKS = {
   'Library of Congress': 'https://www.loc.gov/collections/',
   'Internet Archive': 'https://archive.org/search',
   'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
+  'Chronicling America': 'https://chroniclingamerica.loc.gov/',
+  'Chronicling America': 'https://chroniclingamerica.loc.gov/',
   'Smithsonian Libraries': 'https://library.si.edu/digital-library',
   'Yale Library': 'https://collections.library.yale.edu/',
 };
