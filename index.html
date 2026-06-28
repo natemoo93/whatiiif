@@ -660,40 +660,72 @@ async function loadManifest(url,jumpTo){
   gotoPage(typeof jumpTo==='number'?jumpTo:0);
 }
 
-async function fetchManifest(url){
-  // If already a proxy URL, fetch directly without wrapping again
-  if(url.startsWith('/manifest-proxy')){
-    try{
-      var r=await fetch(url);
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      var data=await r.json();
-      return {ok:true,data:data};
-    } catch(e){
-      try{fetch('/log-error?url='+encodeURIComponent(url)+'&reason='+encodeURIComponent(e.message));}catch(x){}
-      return {ok:false,error:e.message};
+var IA_TIMEOUT_MS = 8000;
+
+function isIAManifest(url) {
+  return /iiif\.archive\.org/.test(url);
+}
+
+async function fetchManifest(url) {
+  var isIA = isIAManifest(url);
+
+  async function doFetch(fetchUrl) {
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, IA_TIMEOUT_MS);
+    try {
+      var r = await fetch(fetchUrl, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch(e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') {
+        var err = new Error('__TIMEOUT__');
+        err.isTimeout = true;
+        throw err;
+      }
+      throw e;
     }
   }
+
+  function iaTimeoutMessage() {
+    return 'Internet Archive appears to be slow or unavailable right now. ' +
+           'This item\'s images are hosted on archive.org, which is outside our control. ' +
+           'Please try again in a few minutes.';
+  }
+
+  // Already a proxy URL — fetch directly
+  if (url.startsWith('/manifest-proxy')) {
+    try {
+      var data = await doFetch(url);
+      return { ok: true, data: data };
+    } catch(e) {
+      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
+      return { ok: false, error: e.isTimeout ? iaTimeoutMessage() : e.message, isTimeout: !!e.isTimeout };
+    }
+  }
+
   // Try direct fetch first
-  try{
-    var r=await fetch(url);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    var data=await r.json();
-    return {ok:true,data:data};
-  } catch(e){
+  try {
+    var data = await doFetch(url);
+    return { ok: true, data: data };
+  } catch(e) {
+    if (e.isTimeout) {
+      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=timeout'); } catch(x) {}
+      return { ok: false, error: iaTimeoutMessage(), isTimeout: true };
+    }
     // Fall back to Worker manifest proxy
-    try{
-      var proxyUrl='/manifest-proxy?url='+encodeURIComponent(url);
-      var r2=await fetch(proxyUrl);
-      if(!r2.ok) throw new Error('HTTP '+r2.status);
-      var data2=await r2.json();
-      return {ok:true,data:data2};
-    } catch(e2){
-      try{fetch('/log-error?url='+encodeURIComponent(url)+'&reason='+encodeURIComponent(e2.message));}catch(x){}
-      return {ok:false,error:e2.message};
+    try {
+      var proxyUrl = '/manifest-proxy?url=' + encodeURIComponent(url);
+      var data2 = await doFetch(proxyUrl);
+      return { ok: true, data: data2 };
+    } catch(e2) {
+      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e2.message)); } catch(x) {}
+      var msg = e2.isTimeout ? iaTimeoutMessage() : e2.message;
+      return { ok: false, error: msg, isTimeout: !!e2.isTimeout };
     }
   }
 }
-
 function buildSelect(){
   var sel=$('pageSelect');sel.innerHTML='';
   canvases.forEach(function(c,i){
