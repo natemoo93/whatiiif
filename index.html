@@ -650,7 +650,7 @@ async function initHighlight(){
       var mRel=m.related||(m.homepage&&(Array.isArray(m.homepage)?m.homepage[0]:m.homepage))||null;
       if(mRel){ var mru=mRel['@id']||mRel.id||mRel; if(typeof mru==='string'&&mru.startsWith('http')) return mru; }
     }
-    return originalInputUrl||manifestId;
+    return originalInputUrl||(manifestId?manifestId.replace(/\/manifest\.json$/,'').replace(/\/+$/,''):pManifest);
   })();
   $('hlSourceLink').href=instUrl;
   $('hlSourceLink').textContent='View at institution ↗';
