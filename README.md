@@ -30,10 +30,6 @@ whatiiif is a single static HTML file with no backend dependencies. Download `in
 - [IIIF Presentation API](https://iiif.io/api/presentation/) 2 and 3
 - [IIIF Image API](https://iiif.io/api/image/) for server-side region cropping
 
-## Coming soon
-
-- **Sniiiffer** a browser extension for detecting IIIF manifests on any page, for institutions whose URLs don't follow a predictable pattern
-
 ## License
 
 MIT
