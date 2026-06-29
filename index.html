@@ -745,6 +745,7 @@ async function fetchManifest(url) {
     var data = await doFetch(url);
     return { ok: true, data: data };
   } catch(e) {
+    console.log('error status:', e.status, 'message:', e.message);
     // 403 means the institution is blocking access — proxy will also fail, skip it
     if (e.status === 403) {
       try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=403'); } catch(x) {}
