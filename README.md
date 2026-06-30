@@ -22,7 +22,7 @@ Researchers citing specific content in digitized primary sources, digital humani
 
 ## Self-host
 
-whatiiif is a single static HTML file with no backend dependencies. Download `index.html` and serve it from anywhere.
+whatiiif is a single static HTML file with no backend dependencies. Download `index.html` and serve it from anywhere.  The core viewer/link generation is a single static HTML file with no backend. Manifest-proxy and OG card generation are optional, hosted separately, and only used on whatiiif.com itself.  They aren't packaged for redistribution yet, so please reach out if you want to self-host the full setup.
 
 ## Built with
 
