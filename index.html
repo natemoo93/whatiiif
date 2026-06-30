@@ -359,14 +359,21 @@ var PLATFORMS=[
     }
   },
 
-  // Harvard viewer — extracts manifestId from query string
+  // Harvard viewer — handles both ?manifestId= and /viewer/URN-3: with canvasId
   {
     name:'Harvard Digital Collections',
     pattern:/viewer\.lib\.harvard\.edu\/viewer/,
     toManifest:function(url){
+      // Pattern 1: ?manifestId=https://nrs...
       var m=url.match(/[?&]manifestId=([^&]+)/);
-      if(!m) return null;
-      return decodeURIComponent(m[1]);
+      if(m) return decodeURIComponent(m[1]);
+      // Pattern 2: canvasId=https://nrs.../canvas/... — strip /canvas/ suffix
+      var c=url.match(/[?&]canvasId=([^&]+)/);
+      if(c){
+        var canvas=decodeURIComponent(c[1]);
+        return canvas.replace(/\/canvas\/[^/]+$/, '');
+      }
+      return null;
     }
   },
 
