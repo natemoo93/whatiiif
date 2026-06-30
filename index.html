@@ -359,6 +359,17 @@ var PLATFORMS=[
     }
   },
 
+  // Harvard viewer — extracts manifestId from query string
+  {
+    name:'Harvard Digital Collections',
+    pattern:/viewer\.lib\.harvard\.edu\/viewer/,
+    toManifest:function(url){
+      var m=url.match(/[?&]manifestId=([^&]+)/);
+      if(!m) return null;
+      return decodeURIComponent(m[1]);
+    }
+  },
+
   // Harvard Digital Collections — nrs.harvard.edu URN manifests (CORS open, fetch directly)
   {
     name:'Harvard Digital Collections',
