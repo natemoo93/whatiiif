@@ -260,6 +260,11 @@ footer a:hover{color:var(--ink)}
         <div class="url-box" id="hlShareUrl"></div>
         <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
       </div>
+      <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> link (for interoperable viewers)</p>
+      <div class="url-row">
+        <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
+        <button class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
+      </div>
     </div>
   </div>
 </main>
@@ -537,6 +542,70 @@ var selState=null,mouseMode='select',dragging=false,dragStart=null;
 var resolvedManifestUrl='';
 var originalInputUrl='';
 
+/* ── IIIF Content State API 1.0 encoding ── */
+/* Per https://iiif.io/api/content-state/1.0/#6-content-state-encoding */
+function encodeContentState(json){
+  var uriEncoded=encodeURIComponent(json);
+  var b64=btoa(uriEncoded);
+  return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+function decodeContentState(s){
+  var pad=s.length%4;
+  if(pad===1) throw new Error('Invalid content state length');
+  if(pad) s+='===='.slice(0,4-pad);
+  var b64=s.replace(/-/g,'+').replace(/_/g,'/');
+  return decodeURIComponent(atob(b64));
+}
+
+/* Build a Target Body content state (spec section 2.2.3) — the compact form recommended for query-string transport */
+function buildContentStateTargetBody(manifestId,canvasId,xywh){
+  var target={
+    id: canvasId + (xywh?'#xywh='+xywh:''),
+    type: 'Canvas',
+    partOf: [{ id: manifestId, type: 'Manifest' }]
+  };
+  return JSON.stringify(target);
+}
+
+/* Parse a content state value from ?iiif-content= — returns {manifestId, canvasId, xywh} or null */
+function parseContentState(raw){
+  if(!raw) return null;
+  // Per spec 3.1.1: if the value is a plain URI, it's not encoded — treat as a Manifest URI
+  if(/^https?:\/\//i.test(raw)){
+    return { manifestId: raw, canvasId: null, xywh: null, canvasIdx: 0 };
+  }
+  // Otherwise it's a content-state-encoded JSON-LD payload
+  var json;
+  try{ json=JSON.parse(decodeContentState(raw)); }
+  catch(e){ return null; }
+  // Spec allows either the full Annotation (2.2.1) or the target body (2.2.3)
+  var target = (json.motivation==='contentState'||(Array.isArray(json.motivation)&&json.motivation.indexOf('contentState')>-1))
+    ? json.target
+    : json;
+  // Only single-target (Canvas or Manifest) is supported for now — multi-target comparison views are out of scope
+  if(Array.isArray(target)) target=target[0];
+  if(!target||!target.id) return null;
+  var xywhMatch=(target.id||'').match(/#xywh=([\d.,]+)/);
+  var canvasId=target.id.replace(/#xywh=[\d.,]+$/,'');
+  var manifestId=null;
+  if(target.type==='Manifest'){
+    manifestId=target.id;
+    canvasId=null;
+  } else if(Array.isArray(target.partOf)){
+    var mp=target.partOf.find(function(p){return p.type==='Manifest';});
+    if(mp) manifestId=mp.id;
+  } else if(target.partOf&&target.partOf.type==='Manifest'){
+    manifestId=target.partOf.id;
+  }
+  if(!manifestId) return null;
+  return {
+    manifestId: manifestId,
+    canvasId: canvasId,
+    xywh: xywhMatch?xywhMatch[1]:null,
+    canvasIdx: 0
+  };
+}
+
 /* ── URL params ── */
 var params=new URLSearchParams(location.search);
 var pManifest=params.get('manifest');
@@ -544,6 +613,18 @@ var pCanvas=parseInt(params.get('canvas')||'0',10);
 var pXywh=params.get('xywh');
 var pLabel=params.get('label');
 var pSvc=params.get('svc');
+
+/* IIIF Content State API 1.0 import — accept ?iiif-content= and map to our internal params */
+var pContentStateCanvasId=null; // set when content state gave us a canvas URI (resolved to index after manifest loads)
+var pIiifContent=params.get('iiif-content');
+if(pIiifContent && !pManifest){
+  var cs=parseContentState(pIiifContent);
+  if(cs){
+    pManifest=cs.manifestId;
+    pXywh=cs.xywh;
+    pContentStateCanvasId=cs.canvasId;
+  }
+}
 
 if(pManifest && pXywh){
   // Full highlight link — show the highlight view
@@ -614,7 +695,12 @@ async function initHighlight(){
     m=result.data;
     cvs=getCanvases(m);
     if(!cvs.length){ showErr('No canvases found.'); return; }
-    idx=Math.min(pCanvas,cvs.length-1);
+    // If Content State supplied a canvas URI, resolve it to an index in this manifest
+    if(pContentStateCanvasId){
+      var foundIdx=cvs.findIndex(function(c){return (c['@id']||c.id)===pContentStateCanvasId;});
+      if(foundIdx>-1) idx=foundIdx;
+    }
+    idx=Math.min(idx,cvs.length-1);
     canvas=cvs[idx];
     canvasId=canvas['@id']||canvas.id||'';
     manifestId=m['@id']||m.id||pManifest;
@@ -699,6 +785,16 @@ async function initHighlight(){
   $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').textContent=location.href;
 
+  // Generate a companion IIIF Content State (spec 1.0) URL
+  if(canvasId && pManifest){
+    var csBody=buildContentStateTargetBody(pManifest,canvasId,pXywh);
+    var csEncoded=encodeContentState(csBody);
+    var csUrl=location.origin+location.pathname+'?iiif-content='+csEncoded;
+    $('hlContentStateUrl').textContent=csUrl;
+  } else {
+    $('hlContentStateUrl').textContent='(unavailable — canvas ID could not be resolved)';
+  }
+
   // Full resolution crop — region at max quality, opens as plain image
   var fullResUrl=pXywh
     ?iiifUrl(svcBase,region,fullSizeParam(svcBase))
@@ -741,6 +837,7 @@ window.switchToViewer=function(){
   }
 };
 window.copyHlUrl=function(){ copyText($('hlShareUrl').textContent,'hlCopyBtn'); };
+window.copyHlCsUrl=function(){ copyText($('hlContentStateUrl').textContent,'hlCsCopyBtn'); };
 
 /* ══ VIEWER MODE ══ */
 async function loadManifest(url,jumpTo){
