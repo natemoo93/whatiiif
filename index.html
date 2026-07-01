@@ -657,11 +657,14 @@ async function initHighlight(){
   $('ctxImg').src=proxy?proxy.ctx:iiifUrl(svcBase,'full','600,');
 
   if(pXywh){
-    $('ctxImg').onload=function(){
+    var applyHlRect=function(){
       var hr=$('hlRect');
       hr.setAttribute('x',rx/cW);hr.setAttribute('y',ry/cH);
       hr.setAttribute('width',rw/cW);hr.setAttribute('height',rh/cH);
     };
+    var ci=$('ctxImg');
+    if(ci.complete&&ci.naturalWidth){applyHlRect();}
+    else{ci.onload=applyHlRect;}
   }
 
   var meta=$('hlMeta');
