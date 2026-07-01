@@ -703,6 +703,7 @@ async function initHighlight(){
     idx=Math.min(idx,cvs.length-1);
     canvas=cvs[idx];
     canvasId=canvas['@id']||canvas.id||'';
+    console.log('[whatiiif-debug] canvas structure:',{canvasId:canvasId,'canvas.@id':canvas['@id'],'canvas.id':canvas.id,canvasKeys:Object.keys(canvas),manifestVersion:m['@context']});
     manifestId=m['@id']||m.id||pManifest;
     mLabel=getLabel(m.label);
     cLabel=getLabel(canvas.label);
