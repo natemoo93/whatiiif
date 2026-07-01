@@ -913,13 +913,10 @@ async function fetchManifest(url) {
     var data = await doFetch(url);
     return { ok: true, data: data };
   } catch(e) {
-    // 403 or LC (which blocks Cloudflare IPs) — proxy will also fail, skip it
-    if (e.status === 403 || url.includes('loc.gov')) {
+    // 403 — proxy will also fail on access-denied, skip it
+    if (e.status === 403) {
       try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
-      var lcMsg = url.includes('loc.gov')
-        ? 'Could not load this Library of Congress manifest directly. Try reloading — direct browser access usually works.'
-        : 'Access denied (403). This institution restricts direct access to their manifests. Try pasting the manifest URL directly.';
-      return { ok: false, error: lcMsg };
+      return { ok: false, error: 'Access denied (403). This institution restricts direct access to their manifests. Try pasting the manifest URL directly.' };
     }
     // Fall back to Worker manifest proxy (even on timeout — proxy may succeed)
     try {
