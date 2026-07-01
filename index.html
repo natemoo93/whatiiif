@@ -687,13 +687,16 @@ window.handleLoad=async function(){
 
 /* ══ HIGHLIGHT MODE ══ */
 async function initHighlight(){
+  console.log('[whatiiif-debug] initHighlight start, pManifest:',pManifest);
   var result=await fetchManifest(pManifest);
+  console.log('[whatiiif-debug] fetchManifest result:',{ok:result.ok,error:result.error,hasData:!!result.data});
   var m=null, cvs=[], idx=pCanvas, canvas=null, canvasId='', manifestId=pManifest;
   var mLabel='', cLabel='', cW=1000, cH=1400, svcBase=pSvc||null;
 
   if(result.ok){
     m=result.data;
     cvs=getCanvases(m);
+    console.log('[whatiiif-debug] canvases found:',cvs.length);
     if(!cvs.length){ showErr('No canvases found.'); return; }
     // If Content State supplied a canvas URI, resolve it to an index in this manifest
     if(pContentStateCanvasId){
@@ -703,7 +706,7 @@ async function initHighlight(){
     idx=Math.min(idx,cvs.length-1);
     canvas=cvs[idx];
     canvasId=canvas['@id']||canvas.id||'';
-    console.log('[whatiiif-debug] canvas structure:',{canvasId:canvasId,'canvas.@id':canvas['@id'],'canvas.id':canvas.id,canvasKeys:Object.keys(canvas),manifestVersion:m['@context']});
+    console.log('[whatiiif-debug]',JSON.stringify({canvasId:canvasId,atId:canvas['@id']||null,id:canvas.id||null,canvasKeys:Object.keys(canvas),manifestContext:m['@context']||null}));
     manifestId=m['@id']||m.id||pManifest;
     mLabel=getLabel(m.label);
     cLabel=getLabel(canvas.label);
