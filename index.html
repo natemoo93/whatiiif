@@ -657,9 +657,11 @@ async function initHighlight(){
   $('ctxImg').src=proxy?proxy.ctx:iiifUrl(svcBase,'full','600,');
 
   if(pXywh){
-    var hr=$('hlRect');
-    hr.setAttribute('x',rx/cW);hr.setAttribute('y',ry/cH);
-    hr.setAttribute('width',rw/cW);hr.setAttribute('height',rh/cH);
+    $('ctxImg').onload=function(){
+      var hr=$('hlRect');
+      hr.setAttribute('x',rx/cW);hr.setAttribute('y',ry/cH);
+      hr.setAttribute('width',rw/cW);hr.setAttribute('height',rh/cH);
+    };
   }
 
   var meta=$('hlMeta');
