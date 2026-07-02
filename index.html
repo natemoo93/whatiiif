@@ -381,12 +381,12 @@ var PLATFORMS=[
     }
   },
 
-  // Harvard Digital Collections — nrs.harvard.edu URN manifests (CORS open, fetch directly)
+  // Harvard Digital Collections — nrs.lib.harvard.edu URN manifests (CORS open, fetch directly)
   {
     name:'Harvard Digital Collections',
-    pattern:/nrs\.harvard\.edu\/URN-3:[^?#\s]+:MANIFEST/i,
+    pattern:/nrs\.lib\.harvard\.edu\/URN-3:[^?#\s]+:MANIFEST/i,
     toManifest:function(url){
-      var m=url.match(/(https?:\/\/nrs\.harvard\.edu\/URN-3:[^?#\s]+:MANIFEST:\d+)/i);
+      var m=url.match(/(https?:\/\/nrs\.lib\.harvard\.edu\/URN-3:[^?#\s]+:MANIFEST:\d+)/i);
       if(!m) return null;
       return m[1];
     }
@@ -469,7 +469,7 @@ var PLATFORMS=[
 
 /* ── populate platform list ── */
 var PLATFORM_LINKS = {
-  'Harvard Digital Collections': 'https://digitalcollections.library.harvard.edu/',
+  'Harvard Digital Collections': 'https://library.harvard.edu/',
   'Library of Congress': 'https://www.loc.gov/collections/',
   'Internet Archive': 'https://archive.org/search',
   'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
