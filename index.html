@@ -139,7 +139,7 @@ footer a:hover{color:var(--ink)}
     </details>
     <p class="input-hint" style="margin-top:.3rem">
   Try it with one of these sample items:
-  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://www.loc.gov/item/2003626426/';onUrlInput();">Waldseemüller 1507 World Map (Library of Congress)</a> ·
+  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a>·
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://archive.org/details/mobydickorwhale01melv';onUrlInput();">Moby Dick (Internet Archive)</a>
 · <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/2002046';onUrlInput();">Voynich Manuscript (Yale)</a>
   </p>
@@ -260,11 +260,9 @@ footer a:hover{color:var(--ink)}
         <div class="url-box" id="hlShareUrl"></div>
         <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
       </div>
-      <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> link (for interoperable viewers)</p>
-      <div class="url-row">
-        <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
-        <button class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
-      </div>
+      <p class="share-label" style="margin-top:.75rem">Open manifest in another <a href="https://iiif.io/api/cookbook/recipe/0466-link-for-loading-manifest/" target="_blank" style="color:inherit">IIIF Content State</a>-aware viewer:</p>
+      <div id="hlViewerLinks" style="display:flex;gap:.5rem;flex-wrap:wrap;font-size:.78rem"></div>
+      <p style="font-size:.68rem;color:var(--ink-faint);margin-top:.4rem;font-style:italic">External viewers load the full manifest — region highlighting only appears on whatiiif.com.</p>
     </div>
   </div>
 </main>
@@ -789,15 +787,6 @@ async function initHighlight(){
   $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').textContent=location.href;
 
-  // Generate a companion IIIF Content State (spec 1.0) URL
-  if(canvasId && pManifest){
-    var csBody=buildContentStateTargetBody(pManifest,canvasId,pXywh);
-    var csEncoded=encodeContentState(csBody);
-    var csUrl=location.origin+location.pathname+'?iiif-content='+csEncoded;
-    $('hlContentStateUrl').textContent=csUrl;
-  } else {
-    $('hlContentStateUrl').textContent='(unavailable — canvas ID could not be resolved)';
-  }
   // Populate "Open in..." external viewer links using IIIF Content State plain-URI form
   // (spec 3.1.1 — reliably supported per cookbook recipe 0466). Region highlighting via
   // base64-encoded Content State isn't reliably supported across viewers yet, so external
@@ -857,7 +846,6 @@ window.switchToViewer=function(){
   }
 };
 window.copyHlUrl=function(){ copyText($('hlShareUrl').textContent,'hlCopyBtn'); };
-window.copyHlCsUrl=function(){ copyText($('hlContentStateUrl').textContent,'hlCsCopyBtn'); };
 
 /* ══ VIEWER MODE ══ */
 async function loadManifest(url,jumpTo){
