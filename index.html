@@ -528,6 +528,10 @@ var EXTRA_INSTITUTIONS = [
   li.style.fontSize='.72rem';
   li.textContent='✓ Any other CONTENTdm-hosted institution';
   list.appendChild(li);
+  var reqLi=document.createElement('li');
+  reqLi.style.marginTop='.4rem';
+  reqLi.innerHTML='→ <a href="https://tally.so/r/aQoOBE" target="_blank" rel="noopener" style="color:var(--accent)">Request institution support</a>';
+  list.appendChild(reqLi);
 })();
 
 function detectPlatform(url){
