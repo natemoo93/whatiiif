@@ -21,6 +21,8 @@ body{min-height:100vh;display:flex;flex-direction:column}
 .masthead-title{font-family:var(--serif);font-size:1.05rem;font-weight:300;letter-spacing:.08em;text-transform:uppercase}
 .masthead-rule{flex:1;border:none;border-top:.5px solid var(--rule);align-self:center;min-width:2rem}
 .masthead-sub{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.masthead-nav{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:none;padding:.25rem .6rem;border:1px solid var(--ink);transition:background .12s,color .12s}
+.masthead-nav:hover{background:var(--ink);color:var(--paper)}
 main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
 .state{font-family:var(--serif);font-size:1.05rem;font-weight:300;font-style:italic;color:var(--ink-mid);padding:3rem 0;text-align:center}
 .state.is-err{color:var(--accent);font-style:normal;font-size:.9rem;line-height:1.6}
@@ -115,6 +117,7 @@ footer a:hover{color:var(--ink)}
   <span class="masthead-title">IIIF Highlight</span>
   <hr class="masthead-rule" aria-hidden="true">
   <span class="masthead-sub">Presentation API 2 &amp; 3</span>
+  <a class="masthead-nav" href="/contact.html">Contact</a>
 </header>
 <main>
   <div id="stateMsg" class="state" style="display:none"></div>
@@ -270,7 +273,7 @@ footer a:hover{color:var(--ink)}
 </main>
 <footer>
   <span>IIIF Highlight — works with any Presentation API 2 or 3 source</span>
-  <span>Built by <a href="https://github.com/natemoo93/whatiiif" target="_blank">Nate Moore</a> <a href="https://tally.so/r/ZjgNDv" target="_blank">Feedback & Support</a> &middot; <a href="https://iiif.io" target="_blank">iiif.io ↗</a></span>
+  <span>Built by <a href="https://github.com/natemoo93/whatiiif" target="_blank">Nate Moore</a> &middot; <a href="/contact.html">Contact</a> &middot; <a href="https://iiif.io" target="_blank">iiif.io ↗</a></span>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/openseadragon.min.js"></script>
