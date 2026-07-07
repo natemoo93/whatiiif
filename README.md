@@ -10,7 +10,7 @@ Whatiiif closes that gap. Paste a JSON manifest or a page URL from a supported i
 
 ## How it works
 
-- Accepts page URLs from supported a growing list of platforms (CONTENTdm, Internet Archive, Library of Congress, etc.) or direct IIIF manifest URLs
+- Accepts page URLs from a growing list of supported platforms (CONTENTdm, Internet Archive, Library of Congress, etc.) or direct IIIF manifest URLs
 - Detects the platform and resolves the IIIF manifest automatically
 - Loads the document in a zoomable viewer powered by OpenSeadragon
 - Lets you drag a selection box over any region of any page
