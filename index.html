@@ -143,7 +143,7 @@ footer a:hover{color:var(--ink)}
     <p class="input-hint" style="margin-top:.3rem">
   Try it with one of these sample items:
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a>·
-  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://archive.org/details/mobydickorwhale01melv';onUrlInput();">Moby Dick (Internet Archive)</a>
+  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a>
 · <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/2002046';onUrlInput();">Voynich Manuscript (Yale)</a>
   </p>
  <div class="page-nav" id="pageNav" style="display:none">
@@ -476,6 +476,17 @@ var PLATFORMS=[
     }
   },
 
+  // Cambridge Digital Library — manifest at /iiif/{id}, CORS open on manifest and images
+  {
+    name:'Cambridge Digital Library',
+    pattern:/cudl\.lib\.cam\.ac\.uk\/view\/([^\/\?#]+)/,
+    toManifest:function(url){
+      var m=url.match(/cudl\.lib\.cam\.ac\.uk\/view\/([^\/\?#]+)/);
+      if(!m) return null;
+      return 'https://cudl.lib.cam.ac.uk/iiif/'+m[1];
+    }
+  },
+
   // Yale Beinecke Library
   {
     name:'Yale Library',
@@ -499,6 +510,7 @@ var PLATFORM_LINKS = {
   'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
   'Smithsonian Libraries': 'https://library.si.edu/digital-library',
   'Yale Library': 'https://collections.library.yale.edu/',
+  'Cambridge Digital Library': 'https://cudl.lib.cam.ac.uk/',
 };
 var EXTRA_INSTITUTIONS = [
   { name: 'CARLI Digital Collections', url: 'https://collections.carli.illinois.edu/' },
@@ -1007,12 +1019,14 @@ function showPageLink(){
 }
 window.goPage=function(d){ gotoPage(currentIdx+d); };
 
+var osdWatchdog=null;
 function loadOSD(canvas){
   var base=getServiceBase(canvas);
   if(!base){ showErr('No image service found for this canvas.'); return; }
   var ts=base+'/info.json';
   show('osdWrap');
   if(viewer){viewer.destroy();viewer=null;}
+  if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
   viewer=OpenSeadragon({
     id:'osdEl',
     prefixUrl:'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/images/',
@@ -1024,7 +1038,22 @@ function loadOSD(canvas){
     gestureSettingsTouch:{clickToZoom:false},
   });
   applyMouseMode();
+  function osdFailed(reason){
+    if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
+    hide('osdWrap');
+    showErr(isIAManifest(ts)
+      ?'Internet Archive appears to be slow or unavailable right now. This item\'s images are hosted on archive.org, which is outside our control. Please try again in a few minutes.'
+      :'Could not load the image for this page. The image server may be down or blocking cross-origin requests.');
+    try{ fetch('/log-error?url='+encodeURIComponent(ts)+'&reason='+reason); }catch(x){}
+  }
+  // The image server can hang without ever failing the request (e.g. IA gateway
+  // outages), leaving OSD stuck loading forever — bail out after a timeout.
+  osdWatchdog=setTimeout(function(){ osdFailed('osd-open-timeout'); },IA_TIMEOUT_MS+4000);
+  viewer.addHandler('open-failed',function(){ osdFailed('osd-open-failed'); });
   viewer.addHandler('open',function(){
+    if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
+    hide('stateMsg');
+    show('osdWrap');
     var c=viewer.canvas;
     c.addEventListener('mousedown',onDragStart);
     c.addEventListener('mousemove',onDragMove);
