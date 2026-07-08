@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -536,23 +535,28 @@ var EXTRA_INSTITUTIONS = [
 (function(){
   var list=document.getElementById('platformList');
   if(!list) return;
-  var seen={};
+  // Display list is alphabetized here at render time; PLATFORMS array order is
+  // match order and must NOT be alphabetized (first match wins — see handlers).
+  var seen={},entries=[];
   PLATFORMS.forEach(function(p){
     if(p.name==='Direct manifest URL'||p.name==='CONTENTdm'||p.name==='Internet Archive') return;
     if(seen[p.name]) return;
     seen[p.name]=true;
-    var li=document.createElement('li');
-    var url=PLATFORM_LINKS[p.name];
-    if(url){
-      li.innerHTML='✓ <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--accent)">'+p.name+'</a>';
-    } else {
-      li.textContent='✓ '+p.name;
-    }
-    list.appendChild(li);
+    entries.push({name:p.name,url:PLATFORM_LINKS[p.name]||null});
   });
   EXTRA_INSTITUTIONS.forEach(function(inst){
+    if(seen[inst.name]) return;
+    seen[inst.name]=true;
+    entries.push({name:inst.name,url:inst.url});
+  });
+  entries.sort(function(a,b){ return a.name.localeCompare(b.name); });
+  entries.forEach(function(e){
     var li=document.createElement('li');
-    li.innerHTML='✓ <a href="'+inst.url+'" target="_blank" rel="noopener" style="color:var(--accent)">'+inst.name+'</a>';
+    if(e.url){
+      li.innerHTML='✓ <a href="'+e.url+'" target="_blank" rel="noopener" style="color:var(--accent)">'+e.name+'</a>';
+    } else {
+      li.textContent='✓ '+e.name;
+    }
     list.appendChild(li);
   });
   var li=document.createElement('li');
