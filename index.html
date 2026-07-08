@@ -427,6 +427,21 @@ var PLATFORMS=[
   },
 
 
+  // Library of Congress — Chronicling America newspaper pages.
+  // /resource/{lccn}/{yyyy-mm-dd}/ed-{n}/ maps directly to /item/.../manifest.json,
+  // no intermediate lookup needed. Must precede the generic /resource/ handler,
+  // whose (?!sn\d) guard doesn't exclude these newer numeric LCCNs. LoC 403s
+  // non-browser fetches, so pre-wrap in the proxy.
+  {
+    name:'Library of Congress',
+    pattern:/loc\.gov\/resource\/([^\/\?#]+)\/(\d{4}-\d{2}-\d{2})\/ed-(\d+)/,
+    toManifest:function(url){
+      var m=url.match(/loc\.gov\/resource\/([^\/\?#]+)\/(\d{4}-\d{2}-\d{2})\/ed-(\d+)/);
+      if(!m) return null;
+      return '/manifest-proxy?url='+encodeURIComponent('https://www.loc.gov/item/'+m[1]+'/'+m[2]+'/ed-'+m[3]+'/manifest.json');
+    }
+  },
+
   // Library of Congress — non-newspaper resource URLs
   {
     name:'Library of Congress',
@@ -506,7 +521,6 @@ var PLATFORM_LINKS = {
   'Harvard Digital Collections': 'https://library.harvard.edu/',
   'Harvard CURIOSity': 'https://curiosity.lib.harvard.edu/',
   'Library of Congress': 'https://www.loc.gov/collections/',
-  'Internet Archive': 'https://archive.org/search',
   'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
   'Smithsonian Libraries': 'https://library.si.edu/digital-library',
   'Yale Library': 'https://collections.library.yale.edu/',
@@ -521,7 +535,7 @@ var EXTRA_INSTITUTIONS = [
   if(!list) return;
   var seen={};
   PLATFORMS.forEach(function(p){
-    if(p.name==='Direct manifest URL'||p.name==='CONTENTdm') return;
+    if(p.name==='Direct manifest URL'||p.name==='CONTENTdm'||p.name==='Internet Archive') return;
     if(seen[p.name]) return;
     seen[p.name]=true;
     var li=document.createElement('li');
