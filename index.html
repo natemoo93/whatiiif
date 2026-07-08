@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -581,10 +582,14 @@ function getCanvasDimensions(canvas){
   // Detect pct: in resource URL and scale up accordingly
   var images=canvas.images||[];
   if(images[0]){
-    var rid=(images[0].resource&&(images[0].resource['@id']||images[0].resource.id))||'';
-    var pct=rid.match(/\/pct:(\d+)\//);
-    if(pct){
-      var scale=100/parseInt(pct[1]);
+    var res=images[0].resource||{};
+    var rid=res['@id']||res.id||'';
+    var pct=rid.match(/\/pct:([\d.]+)\//);
+    // Only scale up when the canvas reports the derivative's reduced dims.
+    // ChronAm canvases report full-res dims alongside a pct:12.5 resource —
+    // scaling those up 8x misplaces the highlight rect.
+    if(pct&&(!res.width||Math.abs(cW-res.width)<=cW*0.05)){
+      var scale=100/parseFloat(pct[1]);
       cW=Math.round(cW*scale);
       cH=Math.round(cH*scale);
     }
@@ -806,9 +811,12 @@ async function initHighlight(){
     :(cvs.length?'Canvas '+(idx+1)+' of '+cvs.length:'');
   $('hlPageNum').textContent=idx+1;
 
-  // Use Worker-proxied URLs if available (solves CORS), otherwise direct IIIF
+  // Use Worker-proxied URLs if available (solves CORS), otherwise direct IIIF.
+  // Never request wider than the region itself: upscaling makes some servers
+  // (LoC tile.loc.gov) resample from a low-res pyramid level and return blur.
   var proxy=window.__WHATIIIF_PROXY__||null;
-  $('cropImg').src=proxy?proxy.crop:(pXywh?iiifUrl(svcBase,region,'800,'):iiifUrl(svcBase,'full','800,'));
+  var cropSize=Math.min(800,pXywh?rw:cW)+',';
+  $('cropImg').src=proxy?proxy.crop:iiifUrl(svcBase,pXywh?region:'full',cropSize);
   $('ctxImg').src=proxy?proxy.ctx:iiifUrl(svcBase,'full','600,');
 
   // hlRect applied after show('highlightMode') below
