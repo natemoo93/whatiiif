@@ -846,6 +846,10 @@ async function initHighlight(){
     // Harvard: reconstruct viewer URL from nrs.lib.harvard.edu URN manifest id
     var harvM=(manifestId||'').match(/^https?:\/\/nrs\.lib\.harvard\.edu\/(URN-3:.+?):MANIFEST:\d+$/i);
     if(harvM) return 'https://viewer.lib.harvard.edu/viewer/'+harvM[1];
+    // Cambridge: manifests lack related/homepage; /iiif/{id} inverts to /view/{id}
+    // (must stay in sync with the forward CUDL handler). /{idx+1} deep-links the page.
+    var cudlM=(manifestId||pManifest||'').match(/^https?:\/\/cudl\.lib\.cam\.ac\.uk\/iiif\/([^\/\?#]+)/);
+    if(cudlM) return 'https://cudl.lib.cam.ac.uk/view/'+cudlM[1]+'/'+(idx+1);
     // CONTENTdm: reconstruct item page from @id (colon format) or info URL
     var cdmBase=manifestId||pManifest||'';
     var cdmM=cdmBase.match(/^(https?:\/\/[^\/]+)\/iiif\/([^:\/]+):(\d+)(?:\/manifest)?/);
