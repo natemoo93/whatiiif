@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -444,19 +445,24 @@ var PLATFORMS=[
     }
   },
 
-  // Library of Congress — non-newspaper resource URLs
+  // Library of Congress — non-newspaper resource URLs. Fetches are DIRECT, not
+  // proxied: LoC blocks Cloudflare Worker IPs (proxy 403s) but serves browser
+  // fetches with ACAO * — same finding as the ChronAm handler above, and the
+  // fo=json endpoint verified identically 2026-07-09.
   {
     name:'Library of Congress',
     pattern:/loc\.gov\/resource\/(?!sn\d)([^\/\?]+)/,
     toManifest:async function(url){
       var base=url.match(/(https?:\/\/www\.loc\.gov\/resource\/[^\/\?#]+)/);
       if(!base) return null;
-      var r=await fetch('/manifest-proxy?url='+encodeURIComponent(base[1].replace(/\/+$/,'')+'/?fo=json'));
-      var data=await r.json();
-      var lccn=data.segments&&data.segments[0]&&data.segments[0].number_lccn&&data.segments[0].number_lccn[0];
-      if(!lccn) return null;
-      var manifestUrl='https://www.loc.gov/item/'+lccn+'/manifest.json';
-      return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
+      try{
+        var r=await fetch(base[1].replace(/\/+$/,'')+'/?fo=json');
+        if(!r.ok) return null;
+        var data=await r.json();
+        var lccn=data.segments&&data.segments[0]&&data.segments[0].number_lccn&&data.segments[0].number_lccn[0];
+        if(!lccn) return null;
+        return 'https://www.loc.gov/item/'+lccn+'/manifest.json';
+      }catch(e){ return null; }
     }
   },
 
@@ -791,7 +797,7 @@ async function initHighlight(){
     }catch(e){/* fall through with defaults */}
   } else {
     $('stateMsg').className='state is-err';
-    var isWorkerMsg563=result.error&&(result.error.includes('Internet Archive')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
+    var isWorkerMsg563=result.error&&(result.error.includes('Internet Archive')||result.error.includes('Library of Congress')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
     $('stateMsg').textContent='Could not load manifest: '+result.error+(isWorkerMsg563?'':' The source server may not permit cross-origin requests.');
     return;
   }
@@ -922,7 +928,7 @@ async function loadManifest(url,jumpTo){
   show('stateMsg');
   var result=await fetchManifest(url);
   if(!result.ok){
-    var isWorkerMsg666=result.error&&(result.error.includes('Internet Archive')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
+    var isWorkerMsg666=result.error&&(result.error.includes('Internet Archive')||result.error.includes('Library of Congress')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
     showErr('Could not load manifest: '+result.error+(isWorkerMsg666?'':' The server may not allow cross-origin requests — try pasting the manifest URL directly.'));
     return;
   }
@@ -989,6 +995,13 @@ async function fetchManifest(url) {
     if (e.status === 403) {
       try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
       return { ok: false, error: 'Access denied (403). This institution restricts direct access to their manifests. Try pasting the manifest URL directly.' };
+    }
+    // LoC blocks Cloudflare Worker IPs, so the proxy fallback always 403s —
+    // skip it. Direct browser failure here usually means the user's network
+    // strips the Referer header, which LoC's WAF requires (verified 2026-07-09).
+    if (/\bloc\.gov\//.test(url)) {
+      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
+      return { ok: false, error: 'Could not reach the Library of Congress from your browser. Their server may be blocking requests from your network — the item is still viewable at loc.gov directly.' };
     }
     // Fall back to Worker manifest proxy (even on timeout — proxy may succeed)
     try {
