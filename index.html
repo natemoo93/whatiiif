@@ -332,8 +332,6 @@ function iiifUrl(base,region,size){
 }
 
 /* ══ PLATFORM DETECTION ══
-   Only CONTENTdm and Internet Archive are officially supported.
-   For other institutions paste the manifest URL directly.
 */
 var PLATFORMS=[
 
@@ -537,11 +535,9 @@ var PLATFORMS=[
 
   // Princeton University Library (DPUL). The dpul.princeton.edu item page
   // can't be read server-side — it serves a Turnstile bot challenge to
-  // Worker/datacenter IPs (observed 2026-07-10) — so resolution goes through
+  // Worker/datacenter IPs (observed 2026-07-10) so resolution goes through
   // Figgy instead: the DPUL catalog id is the item's ARK tail, and Figgy's
-  // catalog.json search finds the record (one user-initiated request per
-  // paste, via /manifest-proxy since the search has no CORS; outreach to PUL
-  // about a sanctioned path / Signposting is in flight). The manifest itself
+  // catalog.json search finds the record. The manifest itself
   // is CORS-open (ACAO echoes origin) — returned direct. Multi-volume items
   // are sc:Collection wrappers; whatiiif renders single manifests, so take
   // volume 1's sub-manifest.
