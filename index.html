@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -535,25 +537,38 @@ var PLATFORMS=[
     }
   },
 
-  // Princeton University Library (DPUL). Item pages expose no Signposting and
-  // no CORS (checked 2026-07-10), so the page is read through the existing
-  // /manifest-proxy (robots.txt only disallows query-string URLs; item paths
-  // are clean) and the embedded ?manifest= link to Figgy pulled from the HTML.
-  // Figgy manifests ARE CORS-open (ACAO echoes origin) — returned direct.
-  // Multi-volume items resolve to a sc:Collection wrapper; whatiiif renders
-  // single manifests, so take volume 1's sub-manifest.
+  // Princeton University Library (DPUL). The dpul.princeton.edu item page
+  // can't be read server-side — it serves a Turnstile bot challenge to
+  // Worker/datacenter IPs (observed 2026-07-10) — so resolution goes through
+  // Figgy instead: the DPUL catalog id is the item's ARK tail, and Figgy's
+  // catalog.json search finds the record. The manifest itself
+  // is CORS-open (ACAO echoes origin) and returned direct. Multi-volume items
+  // are sc:Collection wrappers; whatiiif renders single manifests, so take
+  // volume 1's sub-manifest.
   {
     name:'Princeton University Library',
     pattern:/dpul\.princeton\.edu\/(?:[^\/]+\/)?catalog\/([^\/\?#]+)/,
     toManifest:async function(url){
+      var idM=url.match(/dpul\.princeton\.edu\/(?:[^\/]+\/)?catalog\/([^\/\?#]+)/);
+      if(!idM) return null;
+      var id=idM[1];
       try{
-        var r=await fetch('/manifest-proxy?url='+encodeURIComponent(url));
+        var r=await fetch('/manifest-proxy?url='+encodeURIComponent('https://figgy.princeton.edu/catalog.json?q='+encodeURIComponent(id)));
         if(!r.ok) return null;
-        var html=await r.text();
-        var m=html.match(/[?&]manifest=([^&"'<>\s]+)/);
-        if(!m) return null;
-        var manifestUrl=decodeURIComponent(m[1]);
-        if(!/^https?:\/\/figgy\.princeton\.edu\//.test(manifestUrl)) return null;
+        var data=await r.json();
+        var docs=(data&&data.data)||[];
+        // Require the record whose ARK ends in the pasted id — a bare keyword
+        // search could fuzzy-match unrelated records.
+        var doc=docs.filter(function(d){
+          var ident=d.attributes&&d.attributes.identifier_ssim;
+          var vals=[].concat((ident&&ident.attributes&&ident.attributes.value)||[]);
+          return vals.some(function(v){ return typeof v==='string'&&v.slice(-id.length)===id; });
+        })[0];
+        if(!doc||!doc.id||!doc.type){ console.warn('[whatiiif] Princeton: no figgy record matching ark tail', id); return null; }
+        // "Scanned Resource" → /concern/scanned_resources/ (snake-case + plural)
+        var slug=String(doc.type).trim().toLowerCase().replace(/\s+/g,'_');
+        if(!/s$/.test(slug)) slug+='s';
+        var manifestUrl='https://figgy.princeton.edu/concern/'+slug+'/'+doc.id+'/manifest';
         var mr=await fetch(manifestUrl);
         if(!mr.ok) return null;
         var mj=await mr.json();
