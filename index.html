@@ -1,10 +1,12 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Whatiiif</title>
-<meta name="description" content="Create shareable deep links to highlighted regions in digitized primary sources. Works with Library of Congress, Yale, Smithsonian, and more.">
+<meta name="description" content="Create shareable deep links to highlighted regions in digitized primary sources. Works with Library of Congress, Yale, Internet Archive, Smithsonian, and more.">
 <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
@@ -519,6 +521,20 @@ var PLATFORMS=[
       var manifestUrl='https://collections.library.yale.edu/manifests/'+m[1];
       return '/manifest-proxy?url='+encodeURIComponent(manifestUrl);
     }
+  },
+
+  // UCLA Digital Collections — catalog ARK maps to iiif.library.ucla.edu with
+  // the ark:/ segment percent-encoded in the path (Presentation v3). Manifest
+  // and image service both CORS-open (ACAO *), no proxy. Verified 2026-07-10.
+  {
+    name:'UCLA Digital Collections',
+    pattern:/digital\.library\.ucla\.edu\/catalog\/(ark:\/\d+\/[^\/\?#]+)/,
+    toManifest:function(url){
+      var m=url.match(/digital\.library\.ucla\.edu\/catalog\/(ark:\/\d+\/[^\/\?#]+)/);
+      if(!m) return null;
+      try{ return 'https://iiif.library.ucla.edu/'+encodeURIComponent(m[1])+'/manifest'; }
+      catch(e){ return null; }
+    }
   }
 ];
 
@@ -532,6 +548,7 @@ var PLATFORM_LINKS = {
   'Smithsonian Libraries': 'https://library.si.edu/digital-library',
   'Yale Library': 'https://collections.library.yale.edu/',
   'Cambridge Digital Library': 'https://cudl.lib.cam.ac.uk/',
+  'UCLA Digital Collections': 'https://digital.library.ucla.edu/',
 };
 var EXTRA_INSTITUTIONS = [
   { name: 'CARLI Digital Collections', url: 'https://collections.carli.illinois.edu/' },
@@ -868,6 +885,12 @@ async function initHighlight(){
     // (must stay in sync with the forward CUDL handler). /{idx+1} deep-links the page.
     var cudlM=(manifestId||pManifest||'').match(/^https?:\/\/cudl\.lib\.cam\.ac\.uk\/iiif\/([^\/\?#]+)/);
     if(cudlM) return 'https://cudl.lib.cam.ac.uk/view/'+cudlM[1]+'/'+(idx+1);
+    // UCLA: manifests lack homepage/related; decode the percent-encoded ARK
+    // back out to the catalog page (sync with the forward UCLA handler).
+    var uclaM=(manifestId||pManifest||'').match(/^https?:\/\/iiif\.library\.ucla\.edu\/(ark(?:%3A|:)[^\/]+)\/manifest/i);
+    if(uclaM){
+      try{ return 'https://digital.library.ucla.edu/catalog/'+decodeURIComponent(uclaM[1]); }catch(e){}
+    }
     // CONTENTdm: reconstruct item page from @id (colon format) or info URL
     var cdmBase=manifestId||pManifest||'';
     var cdmM=cdmBase.match(/^(https?:\/\/[^\/]+)\/iiif\/([^:\/]+):(\d+)(?:\/manifest)?/);
