@@ -533,6 +533,39 @@ var PLATFORMS=[
       try{ return 'https://iiif.library.ucla.edu/'+encodeURIComponent(m[1])+'/manifest'; }
       catch(e){ return null; }
     }
+  },
+
+  // Princeton University Library (DPUL). Item pages expose no Signposting and
+  // no CORS (checked 2026-07-10), so the page is read through the existing
+  // /manifest-proxy (robots.txt only disallows query-string URLs; item paths
+  // are clean) and the embedded ?manifest= link to Figgy pulled from the HTML.
+  // Figgy manifests ARE CORS-open (ACAO echoes origin) — returned direct.
+  // Multi-volume items resolve to a sc:Collection wrapper; whatiiif renders
+  // single manifests, so take volume 1's sub-manifest.
+  {
+    name:'Princeton University Library',
+    pattern:/dpul\.princeton\.edu\/(?:[^\/]+\/)?catalog\/([^\/\?#]+)/,
+    toManifest:async function(url){
+      try{
+        var r=await fetch('/manifest-proxy?url='+encodeURIComponent(url));
+        if(!r.ok) return null;
+        var html=await r.text();
+        var m=html.match(/[?&]manifest=([^&"'<>\s]+)/);
+        if(!m) return null;
+        var manifestUrl=decodeURIComponent(m[1]);
+        if(!/^https?:\/\/figgy\.princeton\.edu\//.test(manifestUrl)) return null;
+        var mr=await fetch(manifestUrl);
+        if(!mr.ok) return null;
+        var mj=await mr.json();
+        if(mj['@type']==='sc:Collection'){
+          var vol=mj.manifests&&mj.manifests[0];
+          if(!vol||!vol['@id']){ console.warn('[whatiiif] Princeton: collection with no sub-manifests', url); return null; }
+          console.warn('[whatiiif] Princeton: multi-volume item, using volume 1 of '+mj.manifests.length, url);
+          return vol['@id'];
+        }
+        return manifestUrl;
+      }catch(e){ return null; }
+    }
   }
 ];
 
@@ -547,6 +580,7 @@ var PLATFORM_LINKS = {
   'Yale Library': 'https://collections.library.yale.edu/',
   'Cambridge Digital Library': 'https://cudl.lib.cam.ac.uk/',
   'UCLA Digital Collections': 'https://digital.library.ucla.edu/',
+  'Princeton University Library': 'https://dpul.princeton.edu/',
 };
 var EXTRA_INSTITUTIONS = [
   { name: 'CARLI Digital Collections', url: 'https://collections.carli.illinois.edu/' },
@@ -875,6 +909,18 @@ async function initHighlight(){
     if(m){
       var mRel=m.related||(m.homepage&&(Array.isArray(m.homepage)?m.homepage[0]:m.homepage))||null;
       if(mRel){ var mru=mRel['@id']||mRel.id||mRel; if(typeof mru==='string'&&mru.startsWith('http')) return mru; }
+      // rendering with format text/html is the manifest's canonical
+      // human-viewable page (Princeton/Figgy uses it; related/homepage absent)
+      if(m.rendering){
+        var rend=Array.isArray(m.rendering)?m.rendering:[m.rendering];
+        for(var ri=0;ri<rend.length;ri++){
+          var rd=rend[ri];
+          if(rd&&rd.format==='text/html'){
+            var rdu=rd['@id']||rd.id;
+            if(typeof rdu==='string'&&rdu.startsWith('http')) return rdu;
+          }
+        }
+      }
     }
     // Harvard: reconstruct viewer URL from nrs.lib.harvard.edu URN manifest id
     var harvM=(manifestId||'').match(/^https?:\/\/nrs\.lib\.harvard\.edu\/(URN-3:.+?):MANIFEST:\d+$/i);
