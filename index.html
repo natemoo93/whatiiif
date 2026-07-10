@@ -142,7 +142,7 @@ footer a:hover{color:var(--ink)}
     </details>
     <p class="input-hint" style="margin-top:.3rem">
   Try it with one of these sample items:
-  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a> ·
+  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a>·
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a>
 · <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/2002046';onUrlInput();">Voynich Manuscript (Yale)</a>
   </p>
@@ -263,7 +263,7 @@ footer a:hover{color:var(--ink)}
         <div class="url-box" id="hlShareUrl"></div>
         <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
       </div>
-      <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> link (for interoperable viewers)</p>
+      <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> (paste into any compatible viewer, or <a id="hlTheseusLink" href="#" target="_blank" style="color:inherit">open in Theseus ↗</a>)</p>
       <div class="url-row">
         <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
         <button class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
@@ -332,6 +332,8 @@ function iiifUrl(base,region,size){
 }
 
 /* ══ PLATFORM DETECTION ══
+   Only CONTENTdm and Internet Archive are officially supported.
+   For other institutions paste the manifest URL directly.
 */
 var PLATFORMS=[
 
@@ -535,9 +537,11 @@ var PLATFORMS=[
 
   // Princeton University Library (DPUL). The dpul.princeton.edu item page
   // can't be read server-side — it serves a Turnstile bot challenge to
-  // Worker/datacenter IPs (observed 2026-07-10) so resolution goes through
+  // Worker/datacenter IPs (observed 2026-07-10) — so resolution goes through
   // Figgy instead: the DPUL catalog id is the item's ARK tail, and Figgy's
-  // catalog.json search finds the record. The manifest itself
+  // catalog.json search finds the record (one user-initiated request per
+  // paste, via /manifest-proxy since the search has no CORS; outreach to PUL
+  // about a sanctioned path / Signposting is in flight). The manifest itself
   // is CORS-open (ACAO echoes origin) — returned direct. Multi-volume items
   // are sc:Collection wrappers; whatiiif renders single manifests, so take
   // volume 1's sub-manifest.
@@ -628,7 +632,7 @@ var EXTRA_INSTITUTIONS = [
   var li=document.createElement('li');
   li.style.color='var(--ink-faint)';
   li.style.fontSize='.72rem';
-  li.textContent='✓ Any CONTENTdm-hosted institution';
+  li.textContent='✓ Any other CONTENTdm-hosted institution';
   list.appendChild(li);
   var reqLi=document.createElement('li');
   reqLi.style.marginTop='.4rem';
@@ -688,14 +692,21 @@ function decodeContentState(s){
   return decodeURIComponent(atob(b64));
 }
 
-/* Build a Target Body content state (spec section 2.2.3) — the compact form recommended for query-string transport */
-function buildContentStateTargetBody(manifestId,canvasId,xywh){
-  var target={
-    id: canvasId + (xywh?'#xywh='+xywh:''),
-    type: 'Canvas',
-    partOf: [{ id: manifestId, type: 'Manifest' }]
+/* Build a full Annotation content state (spec section 2.2.1) */
+function buildContentStateAnnotation(manifestId,canvasId,xywh,label){
+  var annotation={
+    '@context': 'http://iiif.io/api/presentation/3/context.json',
+    id: location.origin+location.pathname+'#content-state-annotation',
+    type: 'Annotation',
+    motivation: ['contentState'],
+    target: {
+      id: canvasId + (xywh?'#xywh='+xywh:''),
+      type: 'Canvas',
+      partOf: [{ id: manifestId, type: 'Manifest' }]
+    }
   };
-  return JSON.stringify(target);
+  if(label) annotation.label={ none: [label] };
+  return JSON.stringify(annotation);
 }
 
 /* Parse a content state value from ?iiif-content= — returns {manifestId, canvasId, xywh} or null */
@@ -729,11 +740,18 @@ function parseContentState(raw){
     manifestId=target.partOf.id;
   }
   if(!manifestId) return null;
+  // Annotation-level label (Presentation 3 language map) — first value of first language
+  var csLabel=null;
+  if(json.label&&typeof json.label==='object'){
+    var lk=Object.keys(json.label)[0];
+    if(lk&&Array.isArray(json.label[lk])&&json.label[lk].length) csLabel=String(json.label[lk][0]);
+  }
   return {
     manifestId: manifestId,
     canvasId: canvasId,
     xywh: xywhMatch?xywhMatch[1]:null,
-    canvasIdx: 0
+    canvasIdx: 0,
+    label: csLabel
   };
 }
 
@@ -754,6 +772,7 @@ if(pIiifContent && !pManifest){
     pManifest=cs.manifestId;
     pXywh=cs.xywh;
     pContentStateCanvasId=cs.canvasId;
+    if(cs.label&&!pLabel) pLabel=cs.label;
   }
 }
 
@@ -792,7 +811,7 @@ window.onUrlInput=function(){
     el.textContent='Direct manifest URL';
     el.className='detected-platform is-found';
   } else {
-    el.textContent='Platform not recognized — will try as manifest URL';
+    el.textContent='Platform not recognized — will try as a manifest URL';
     el.className='detected-platform';
   }
 };
@@ -801,8 +820,20 @@ window.handleLoad=async function(){
   var url=$('urlInput').value.trim();
   originalInputUrl=url;
   if(!url) return;
+  removeHeuristicBtn();
   var platform=detectPlatform(url);
-  var manifestUrl=platform?await platform.toManifest(url):url;
+  var manifestUrl;
+  if(platform){
+    manifestUrl=await platform.toManifest(url);
+  } else {
+    // Unrecognized platform: try the pasted URL as a manifest directly.
+    // Heuristic detection (which proxies the page and probes guessed URLs)
+    // is opt-in — offered as a button only after the direct attempt fails.
+    resolvedManifestUrl=url;
+    var ok=await loadManifest(url);
+    if(!ok) offerHeuristicCheck(url);
+    return;
+  }
   if(!manifestUrl){ showErr('Could not construct a manifest URL from that address. Try pasting the manifest URL directly.'); return; }
   // Unwrap proxy URL so the shareable link contains the real manifest URL, not a relative proxy path
   resolvedManifestUrl=manifestUrl.startsWith('/manifest-proxy?url=')
@@ -810,7 +841,7 @@ window.handleLoad=async function(){
     : manifestUrl;
   // Update input to show resolved manifest URL if it differs from what was pasted
   if(manifestUrl!==url){
-    $('detectedPlatform').textContent='Resolved from '+platform.name;
+    $('detectedPlatform').textContent=platform?'Resolved from '+platform.name:'Resolved by automatic detection';
     $('detectedPlatform').className='detected-platform is-found';
   }
   await loadManifest(manifestUrl);
@@ -958,14 +989,17 @@ async function initHighlight(){
   $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').textContent=location.href;
 
-  // Generate a companion IIIF Content State (spec 1.0) URL
+  // Generate a companion IIIF Content State (spec 1.0) value — the bare
+  // encoded token, ready for any viewer's ?iiif-content= parameter
   if(canvasId && pManifest){
-    var csBody=buildContentStateTargetBody(pManifest,canvasId,pXywh);
+    var csBody=buildContentStateAnnotation(pManifest,canvasId,pXywh,pLabel);
     var csEncoded=encodeContentState(csBody);
-    var csUrl=location.origin+location.pathname+'?iiif-content='+csEncoded;
-    $('hlContentStateUrl').textContent=csUrl;
+    $('hlContentStateUrl').textContent=csEncoded;
+    $('hlTheseusLink').href='https://theseusviewer.org/?iiif-content='+csEncoded;
+    $('hlTheseusLink').style.display='';
   } else {
     $('hlContentStateUrl').textContent='(unavailable — canvas ID could not be resolved)';
+    $('hlTheseusLink').style.display='none';
   }
 
   // Full resolution crop — region at max quality, opens as plain image
@@ -1021,14 +1055,15 @@ async function loadManifest(url,jumpTo){
   if(!result.ok){
     var isWorkerMsg666=result.error&&(result.error.includes('Internet Archive')||result.error.includes('Library of Congress')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
     showErr('Could not load manifest: '+result.error+(isWorkerMsg666?'':' The server may not allow cross-origin requests — try pasting the manifest URL directly.'));
-    return;
+    return false;
   }
   manifest=result.data;
   canvases=getCanvases(manifest);
-  if(!canvases.length){ showErr('No canvases found in manifest.'); return; }
+  if(!canvases.length){ showErr('No canvases found in manifest.'); return false; }
   hide('stateMsg');
   buildSelect();
   gotoPage(typeof jumpTo==='number'?jumpTo:0);
+  return true;
 }
 
 var IA_TIMEOUT_MS = 8000;
@@ -1113,6 +1148,96 @@ async function fetchManifest(url) {
     }
   }
 }
+/* ── heuristic fallback resolution ──
+   Tried only when no PLATFORMS pattern matches a pasted URL. Reads the page
+   through the existing /manifest-proxy and tries suffix guesses; every
+   candidate must validate as a real IIIF manifest before being accepted.
+   Header-based Signposting is NOT checked: /manifest-proxy builds a fresh
+   response and drops the Link header — that needs a Worker change. */
+function looksLikeManifest(data){
+  if(!data||typeof data!=='object') return false;
+  if(/iiif\.io\/api\/presentation/.test(JSON.stringify(data['@context']||''))) return true;
+  var type=data['@type']||data.type||'';
+  return type==='sc:Manifest'||type==='Manifest'||type==='sc:Collection'||type==='Collection';
+}
+
+async function heuristicResolve(pageUrl){
+  var base=pageUrl.replace(/[?#].*$/,'').replace(/\/+$/,'');
+  var candidates=[];
+  // 1. Read the page itself (via proxy — institution pages are rarely CORS-open)
+  try{
+    var r=await fetch('/manifest-proxy?url='+encodeURIComponent(pageUrl));
+    if(r.ok){
+      var html=await r.text();
+      // Embedded viewer link: ?manifest=<url> (UV / Mirador / Figgy pattern)
+      var m=html.match(/[?&]manifest=([^&"'<>\s]+)/);
+      if(m){
+        try{
+          var dec=decodeURIComponent(m[1]);
+          if(/^https?:\/\//.test(dec)) candidates.push(dec);
+        }catch(e){}
+      }
+      // Any absolute URL ending in /manifest or /manifest.json (link tags,
+      // meta tags, viewer configs — this is how Stanford PURL resolves)
+      var lm=html.match(/https?:\/\/[^"'<>\s]+\/manifest(?:\.json)?(?=["'<>\s])/);
+      if(lm) candidates.push(lm[0]);
+      // JSON config blobs: "manifestUrl": "...", "manifest_uri": "...", etc.
+      var jm=html.match(/["']manifest[_-]?(?:url|uri)["']\s*:\s*["'](https?:[^"']+)["']/i);
+      if(jm) candidates.push(jm[1]);
+    }
+  }catch(e){}
+  // 2. Blind suffix guesses off the pasted URL
+  candidates.push(base+'/manifest.json');
+  candidates.push(base+'/manifest');
+  candidates.push(base+'/iiif/manifest');
+  // Validate in order; first real manifest wins
+  var seen={};
+  for(var i=0;i<candidates.length;i++){
+    var c=candidates[i];
+    if(!c||seen[c]) continue;
+    seen[c]=true;
+    try{
+      var result=await fetchManifest(c);
+      if(result.ok&&looksLikeManifest(result.data)) return c;
+    }catch(e){}
+  }
+  return null;
+}
+
+/* Opt-in trigger for heuristicResolve — shown under the error only after a
+   direct load of an unrecognized URL fails, so the proxied page-read and
+   probe fetches never run without the user asking. */
+function removeHeuristicBtn(){
+  var b=$('heuristicBtn');
+  if(b&&b.parentNode) b.parentNode.removeChild(b);
+}
+function offerHeuristicCheck(url){
+  removeHeuristicBtn();
+  var btn=document.createElement('button');
+  btn.id='heuristicBtn';
+  btn.className='btn is-accent';
+  btn.style.cssText='display:block;margin:0 auto 2rem';
+  btn.textContent='Platform not detected. Try heuristic check?';
+  btn.onclick=async function(){
+    btn.disabled=true;
+    $('stateMsg').className='state';
+    $('stateMsg').textContent='Checking the page for a manifest…';
+    show('stateMsg');
+    var found=await heuristicResolve(url);
+    removeHeuristicBtn();
+    if(!found){
+      showErr('Automatic detection could not find a IIIF manifest for that page. If the institution publishes one, try pasting the manifest URL directly.');
+      return;
+    }
+    resolvedManifestUrl=found;
+    $('detectedPlatform').textContent='Resolved by automatic detection';
+    $('detectedPlatform').className='detected-platform is-found';
+    loadManifest(found);
+  };
+  var sm=$('stateMsg');
+  sm.parentNode.insertBefore(btn,sm.nextSibling);
+}
+
 function buildSelect(){
   var sel=$('pageSelect');sel.innerHTML='';
   canvases.forEach(function(c,i){
