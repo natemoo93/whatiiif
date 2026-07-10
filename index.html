@@ -539,8 +539,10 @@ var PLATFORMS=[
   // can't be read server-side — it serves a Turnstile bot challenge to
   // Worker/datacenter IPs (observed 2026-07-10) — so resolution goes through
   // Figgy instead: the DPUL catalog id is the item's ARK tail, and Figgy's
-  // catalog.json search finds the record. The manifest itself
-  // is CORS-open (ACAO echoes origin) and returned direct. Multi-volume items
+  // catalog.json search finds the record (one user-initiated request per
+  // paste, via /manifest-proxy since the search has no CORS; outreach to PUL
+  // about a sanctioned path / Signposting is in flight). The manifest itself
+  // is CORS-open (ACAO echoes origin) — returned direct. Multi-volume items
   // are sc:Collection wrappers; whatiiif renders single manifests, so take
   // volume 1's sub-manifest.
   {
@@ -585,8 +587,7 @@ var PLATFORMS=[
 
 /* ── populate platform list ── */
 var PLATFORM_LINKS = {
-  'Harvard Digital Collections': 'https://library.harvard.edu/',
-  'Harvard CURIOSity': 'https://curiosity.lib.harvard.edu/',
+  'Harvard Digital Collections': 'https://curiosity.lib.harvard.edu/',
   'Library of Congress': 'https://www.loc.gov/collections/',
   'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
   'Smithsonian Libraries': 'https://library.si.edu/digital-library',
@@ -606,7 +607,9 @@ var EXTRA_INSTITUTIONS = [
   // match order and must NOT be alphabetized (first match wins — see handlers).
   var seen={},entries=[];
   PLATFORMS.forEach(function(p){
-    if(p.name==='Direct manifest URL'||p.name==='CONTENTdm'||p.name==='Internet Archive') return;
+    // Harvard CURIOSity stays detectable but is folded into the single
+    // Harvard Digital Collections list entry (which links to CURIOSity)
+    if(p.name==='Direct manifest URL'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity') return;
     if(seen[p.name]) return;
     seen[p.name]=true;
     entries.push({name:p.name,url:PLATFORM_LINKS[p.name]||null});
