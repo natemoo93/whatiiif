@@ -314,7 +314,6 @@ footer a:hover{color:var(--ink)}
         <span class="ea-title" id="eaTitle"></span>
         <span class="ea-text" id="eaText"></span>
       </span>
-      <a id="eaRights" href="#" target="_blank" rel="noopener" style="display:none"></a>
       <a id="eaSource" href="#" target="_blank" rel="noopener">Source</a>
       <a id="eaCite" class="ea-cite" href="#" target="_blank" rel="noopener">View</a>
     </div>
@@ -1233,13 +1232,13 @@ window.copyHlCsUrl=function(){ copyText($('hlContentStateUrl').textContent,'hlCs
    Chromeless, framable viewer for LMS iframes. Tiles load client-side
    directly from the institution's Image API via OSD — never proxied. */
 function getAttribution(m){
-  var a={statement:'',rights:'',provider:'',logo:''};
+  var a={statement:'',provider:'',logo:''};
   if(!m) return a;
   if(m.requiredStatement&&m.requiredStatement.value) a.statement=getLabel(m.requiredStatement.value);
   else if(m.attribution) a.statement=getLabel(m.attribution);
-  var r=m.rights||m.license||'';
-  if(r&&typeof r!=='string') r=r['@id']||r.id||'';
-  a.rights=typeof r==='string'?r:'';
+  // v2 attribution (and some requiredStatements) embed HTML markup, which
+  // would render as literal tag text — keep the words, drop the tags
+  a.statement=a.statement.replace(/<[^>]*>/g,'').trim();
   var prov=Array.isArray(m.provider)?m.provider[0]:m.provider;
   if(prov){
     a.provider=getLabel(prov.label);
@@ -1251,15 +1250,6 @@ function getAttribution(m){
     a.logo=typeof ml==='string'?ml:(ml['@id']||ml.id||'');
   }
   return a;
-}
-function prettyRights(url){
-  var cc=url.match(/creativecommons\.org\/licenses\/([a-z-]+)\/([\d.]+)/i);
-  if(cc) return 'CC '+cc[1].toUpperCase()+' '+cc[2];
-  if(/publicdomain\/zero/i.test(url)) return 'CC0';
-  if(/publicdomain\/mark/i.test(url)) return 'Public Domain';
-  var rs=url.match(/rightsstatements\.org\/vocab\/([^\/]+)/i);
-  if(rs) return rs[1].replace(/-/g,' ');
-  return 'Rights';
 }
 function embedErr(msg){
   // Failure inside the iframe: show the message with a fallback deep link
@@ -1318,7 +1308,6 @@ async function initEmbed(){
   }
   $('eaText').textContent=attrText;
   $('eaText').title=attrText;
-  if(attr.rights){ $('eaRights').href=attr.rights; $('eaRights').textContent=prettyRights(attr.rights); $('eaRights').style.display=''; }
   var instUrl=resolveInstitutionUrl(ctx);
   if(instUrl) $('eaSource').href=instUrl;
   $('eaCite').href=EMBED_ORIGIN+'/?'+buildEmbedParams().toString();
