@@ -83,7 +83,7 @@ details[open] .refine-summary::after{content:' ↑'}
 .label-row input:focus{border-color:var(--accent-light)}
 .url-block .ub-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.35rem}
 .url-row{display:flex;gap:.4rem}
-.url-box{flex:1;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink-mid);word-break:break-all;white-space:pre-wrap}
+.url-box{flex:1;min-width:0;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .copy-btn{font-size:.68rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:0 .85rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;flex-shrink:0;transition:all .12s}
 .copy-btn:hover{border-color:var(--ink);color:var(--ink)}
 .copy-btn.is-copied{border-color:#3a7a4a;color:#3a7a4a}
@@ -377,6 +377,25 @@ function iiifUrl(base,region,size){
 */
 var PLATFORMS=[
 
+  // Viewer share links (Theseus, Mirador, UV, whatiiif itself) — any URL
+  // carrying a ?manifest= param (UV also uses #?manifest=). Must precede
+  // 'Direct manifest URL': these links usually END in an encoded
+  // ...manifest.json, which that pattern would match and then try to load
+  // the whole viewer URL as a manifest. iiif-content= links are handled
+  // separately in handleLoad before platform detection.
+  {
+    name:'IIIF viewer link',
+    pattern:/[?&#]manifest=/,
+    toManifest:function(url){
+      var m=url.match(/[?&#]manifest=([^&#\s]+)/);
+      if(!m) return null;
+      try{
+        var dec=decodeURIComponent(m[1]);
+        return /^https?:\/\//.test(dec)?dec:null;
+      }catch(e){ return null; }
+    }
+  },
+
   // Direct manifest URL — ends in manifest.json or /manifest (checked first)
   {
     name:'Direct manifest URL',
@@ -649,7 +668,7 @@ var EXTRA_INSTITUTIONS = [
   PLATFORMS.forEach(function(p){
     // Harvard CURIOSity stays detectable but is folded into the single
     // Harvard Digital Collections list entry (which links to CURIOSity)
-    if(p.name==='Direct manifest URL'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity') return;
+    if(p.name==='Direct manifest URL'||p.name==='IIIF viewer link'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity') return;
     if(seen[p.name]) return;
     seen[p.name]=true;
     entries.push({name:p.name,url:PLATFORM_LINKS[p.name]||null});
@@ -848,11 +867,31 @@ if(isEmbedMode){
   show('viewerMode');
 }
 
+/* Pull a content-state token out of pasted input: an ?iiif-content= link
+   (Theseus/Mirador/UV) or a bare base64url token. Returns the validated
+   token, or null. */
+function extractContentState(input){
+  var tok=null;
+  var m=input.match(/[?&#]iiif-content=([^&#\s]+)/);
+  if(m){
+    tok=m[1];
+    try{ tok=decodeURIComponent(tok); }catch(e){}
+  } else if(/^[A-Za-z0-9_-]{16,}$/.test(input)){
+    tok=input; // bare encoded token — no URL around it
+  }
+  return (tok&&parseContentState(tok))?tok:null;
+}
+
 /* ── input hint ── */
 window.onUrlInput=function(){
   var url=$('urlInput').value.trim();
   var el=$('detectedPlatform');
   if(!url){ el.textContent=''; el.className='detected-platform'; return; }
+  if(extractContentState(url)){
+    el.textContent='Detected: IIIF Content State';
+    el.className='detected-platform is-found';
+    return;
+  }
   var p=detectPlatform(url);
   if(p&&p.name!=='Direct manifest URL'){
     el.textContent='Detected: '+p.name;
@@ -871,6 +910,14 @@ window.handleLoad=async function(){
   originalInputUrl=url;
   if(!url) return;
   removeHeuristicBtn();
+  // Content-state input: a viewer link carrying ?iiif-content= (Theseus,
+  // Mirador, some UV builds) or a bare encoded token. Round-trip through our
+  // own ?iiif-content= pipeline so canvas URIs, xywh and labels all resolve.
+  var csTok=extractContentState(url);
+  if(csTok){
+    location.href=location.origin+location.pathname+'?iiif-content='+encodeURIComponent(csTok);
+    return;
+  }
   var platform=detectPlatform(url);
   var manifestUrl;
   if(platform){
@@ -1070,7 +1117,7 @@ async function initHighlight(){
   if(canvasId && pManifest){
     var csBody=buildContentStateAnnotation(pManifest,canvasId,pXywh,pLabel);
     var csEncoded=encodeContentState(csBody);
-    $('hlContentStateUrl').textContent=csEncoded;
+    $('hlContentStateUrl').textContent=location.origin+location.pathname+'?iiif-content='+csEncoded;
     $('hlTheseusLink').href='https://theseusviewer.org/?iiif-content='+csEncoded;
     $('hlTheseusLink').style.display='';
   } else {
