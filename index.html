@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -112,6 +114,7 @@ body.is-embed .masthead,body.is-embed footer{display:none}
 body.is-embed main{max-width:none;padding:0}
 #embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
 #embedOsd{flex:1;min-height:0}
+.embed-caption{display:none;text-align:center;font-family:var(--serif);font-size:1.05rem;font-weight:300;padding:.55rem .75rem .4rem;background:var(--paper);border-top:1px solid var(--rule);color:var(--ink)}
 .embed-attr{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;background:var(--paper);border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
 .embed-attr img{height:18px;width:auto;flex-shrink:0}
 .embed-attr .ea-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
@@ -293,6 +296,7 @@ footer a:hover{color:var(--ink)}
   <!-- EMBED MODE (/embed — rendered inside third-party iframes) -->
   <div id="embedMode">
     <div id="embedOsd"></div>
+    <div class="embed-caption" id="eaCaption"></div>
     <div class="embed-attr">
       <img id="eaLogo" alt="" style="display:none">
       <span class="ea-lines">
@@ -1163,6 +1167,9 @@ async function initEmbed(){
 
   // Attribution bar renders regardless of load outcome — it is not dismissible
   var attr=getAttribution(ctx.m);
+  // Caption: only the user-entered label (?label=) — stays blank when the
+  // title would just be a defaulted page number
+  if(pLabel){ $('eaCaption').textContent=pLabel; $('eaCaption').style.display='block'; }
   if(attr.logo){ $('eaLogo').src=attr.logo; $('eaLogo').style.display=''; $('eaLogo').onerror=function(){ this.style.display='none'; }; }
   // Line 1: document title + page number
   var titleText=ctx.mLabel||pLabel||'IIIF document';
