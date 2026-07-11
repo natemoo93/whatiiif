@@ -1271,17 +1271,31 @@ async function initEmbed(){
   // title would just be a defaulted page number
   if(pLabel){ $('eaCaption').textContent=pLabel; $('eaCaption').style.display='block'; }
   if(attr.logo){ $('eaLogo').src=attr.logo; $('eaLogo').style.display=''; $('eaLogo').onerror=function(){ this.style.display='none'; }; }
-  // Line 1: document title + page number. Single-canvas manifests skip the
-  // page suffix: CONTENTdm serves per-page manifests for child-page URLs,
-  // where mLabel is already "Page 6" and "— Page 1" is noise (ISU report).
-  var titleText=ctx.mLabel||pLabel||'IIIF document';
-  if(ctx.cvs.length>1) titleText+=' — Page '+(ctx.idx+1);
+  // Line 1: page number BEFORE title — long titles ellipsize at the end, so
+  // trailing page numbers were getting cut off. Single-canvas manifests skip
+  // the page prefix: CONTENTdm serves per-page manifests for child-page
+  // URLs, where mLabel is already "Page 6" and a page prefix is noise.
+  var titleText=(ctx.cvs.length>1?'Page '+(ctx.idx+1)+' — ':'')+(ctx.mLabel||pLabel||'IIIF document');
   $('eaTitle').textContent=titleText;
   $('eaTitle').title=titleText;
-  // Line 2: institution attribution — statement OR provider, never both
-  // (Yale's requiredStatement already names the library; concatenating the
-  // provider on top read as a duplicate)
-  var attrText=attr.statement||attr.provider||'';
+  // Line 2: institution attribution. Statement first; append the provider
+  // only when the statement doesn't already name it (first-word check —
+  // Yale's requiredStatement says "Yale University Library" while provider
+  // says "Yale Library", and exact-match dedup showed both).
+  var provName=attr.provider;
+  // ISU circus route books: manifests carry only a boilerplate copyright
+  // statement and no provider/logo — show just the source name instead
+  // (scoped to this collection)
+  if(/digital\.library\.illinoisstate\.edu\/iiif\/info\/p15990coll5\//.test(pManifest||'')){
+    attr.statement='';
+    if(!provName) provName='Illinois State University';
+  }
+  var attrText=attr.statement||'';
+  if(provName){
+    var provWord=provName.split(/\s+/)[0].toLowerCase();
+    if(!attrText) attrText=provName;
+    else if(attrText.toLowerCase().indexOf(provWord)===-1) attrText+=' — '+provName;
+  }
   $('eaText').textContent=attrText;
   $('eaText').title=attrText;
   if(attr.rights){ $('eaRights').href=attr.rights; $('eaRights').textContent=prettyRights(attr.rights); $('eaRights').style.display=''; }
