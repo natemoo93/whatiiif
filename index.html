@@ -495,22 +495,40 @@ var PLATFORMS=[
     }
   },
 
-  // Harvard CURIOSity — catalog page → Alma API lookup → mps DRS URN manifest
+  // Harvard CURIOSity — catalog page → nrs DRS URN manifest. Primary path
+  // scrapes the item page itself, which links its manifest and serves open
+  // CORS (ACAO *). The fetch must be DIRECT from the browser: AWS WAF
+  // challenges non-browser clients (202 empty, x-amzn-waf-action: challenge)
+  // and hard-blocks /manifest-proxy (429) — verified 2026-07-11. Fallback is
+  // the Alma/LibraryCloud MMS-ID lookup, but many CURIOSity records (e.g.
+  // Houghton MS Lat 189) are absent from LibraryCloud entirely, so it can't
+  // be the only path. DRS repo codes contain dots (FHCL.HOUGH) — the URN
+  // regexes must allow them. Return the nrs URL, not mps /iiif/3/: nrs 303s
+  // to whichever mps version the object actually has (MS Lat 189 is /iiif/2/).
   {
     name:'Harvard CURIOSity',
     pattern:/curiosity\.lib\.harvard\.edu\/[^\/]+\/catalog\/([^\/\?#]+)/,
     toManifest:async function(url){
-      var m=url.match(/curiosity\.lib\.harvard\.edu\/[^\/]+\/catalog\/([^\/\?#]+)/);
+      var m=url.match(/curiosity\.lib\.harvard\.edu\/([^\/]+)\/catalog\/([^\/\?#]+)/);
       if(!m) return null;
-      var mms=m[1].replace(/^\d+-/,''); // strip Alma network-zone prefix, keep the MMS ID
       try{
-        var r=await fetch('https://api.lib.harvard.edu/v2/items.json?q='+encodeURIComponent(mms),{headers:{'Accept':'application/json'}});
-        if(!r.ok) return null;
-        var text=await r.text();
-        // DRS URN appears in delivery URLs as urn-3:REPO:NNN; mps wants URN-3 uppercased
-        var urn=text.match(/urn-3:[A-Za-z]+:\d+/i);
-        if(!urn) return null;
-        return 'https://mps.lib.harvard.edu/iiif/3/'+urn[0].replace(/^urn-3/i,'URN-3');
+        var r=await fetch('https://curiosity.lib.harvard.edu/'+m[1]+'/catalog/'+m[2]);
+        if(r.ok){
+          var html=await r.text();
+          // Prefer the explicit :MANIFEST link; bare URNs on the page can be
+          // thumbnail/derivative objects
+          var urn=html.match(/urn-3:[A-Za-z0-9.]+:\d+(?=:MANIFEST)/i)||html.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
+          if(urn) return 'https://nrs.harvard.edu/'+urn[0]+':MANIFEST';
+        }
+      }catch(e){}
+      var mms=m[2].replace(/^\d+-/,''); // strip CURIOSity exhibit prefix, keep the MMS ID
+      try{
+        var r2=await fetch('https://api.lib.harvard.edu/v2/items.json?q='+encodeURIComponent(mms),{headers:{'Accept':'application/json'}});
+        if(!r2.ok) return null;
+        var text=await r2.text();
+        var urn2=text.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
+        if(!urn2) return null;
+        return 'https://nrs.harvard.edu/'+urn2[0]+':MANIFEST';
       }catch(e){ return null; }
     }
   },
