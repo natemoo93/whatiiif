@@ -114,7 +114,9 @@ body.is-embed main{max-width:none;padding:0}
 #embedOsd{flex:1;min-height:0}
 .embed-attr{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;background:var(--paper);border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
 .embed-attr img{height:18px;width:auto;flex-shrink:0}
-.embed-attr .ea-text{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical}
+.embed-attr .ea-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
+.embed-attr .ea-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.embed-attr .ea-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-faint)}
 .embed-attr a{color:var(--accent);text-decoration:none;white-space:nowrap;flex-shrink:0}
 .embed-attr a:hover{text-decoration:underline}
 .embed-attr .ea-cite{color:var(--ink-faint);font-size:.62rem}
@@ -293,7 +295,10 @@ footer a:hover{color:var(--ink)}
     <div id="embedOsd"></div>
     <div class="embed-attr">
       <img id="eaLogo" alt="" style="display:none">
-      <span class="ea-text" id="eaText"></span>
+      <span class="ea-lines">
+        <span class="ea-title" id="eaTitle"></span>
+        <span class="ea-text" id="eaText"></span>
+      </span>
       <a id="eaRights" href="#" target="_blank" rel="noopener" style="display:none"></a>
       <a id="eaSource" href="#" target="_blank" rel="noopener">Source</a>
       <a id="eaCite" class="ea-cite" href="#" target="_blank" rel="noopener">View</a>
@@ -1159,8 +1164,15 @@ async function initEmbed(){
   // Attribution bar renders regardless of load outcome — it is not dismissible
   var attr=getAttribution(ctx.m);
   if(attr.logo){ $('eaLogo').src=attr.logo; $('eaLogo').style.display=''; $('eaLogo').onerror=function(){ this.style.display='none'; }; }
-  var attrText=attr.statement||attr.provider||ctx.mLabel||'';
-  if(attr.provider&&attr.statement&&attr.statement.indexOf(attr.provider)===-1) attrText=attr.statement+' — '+attr.provider;
+  // Line 1: document title + page number
+  var titleText=ctx.mLabel||pLabel||'IIIF document';
+  if(ctx.cvs.length) titleText+=' — Page '+(ctx.idx+1);
+  $('eaTitle').textContent=titleText;
+  $('eaTitle').title=titleText;
+  // Line 2: institution attribution — statement OR provider, never both
+  // (Yale's requiredStatement already names the library; concatenating the
+  // provider on top read as a duplicate)
+  var attrText=attr.statement||attr.provider||'';
   $('eaText').textContent=attrText;
   $('eaText').title=attrText;
   if(attr.rights){ $('eaRights').href=attr.rights; $('eaRights').textContent=prettyRights(attr.rights); $('eaRights').style.display=''; }
