@@ -1237,8 +1237,16 @@ function getAttribution(m){
   if(m.requiredStatement&&m.requiredStatement.value) a.statement=getLabel(m.requiredStatement.value);
   else if(m.attribution) a.statement=getLabel(m.attribution);
   // v2 attribution (and some requiredStatements) embed HTML markup, which
-  // would render as literal tag text — keep the words, drop the tags
-  a.statement=a.statement.replace(/<[^>]*>/g,'').trim();
+  // would render as literal tag text — keep the words, drop the tags. Also
+  // drop bare URLs (Harvard: "…under these terms: https://nrs.lib…") plus
+  // the dangling lead-in phrase and punctuation they leave behind.
+  a.statement=a.statement
+    .replace(/<[^>]*>/g,'')
+    .replace(/https?:\/\/\S+/g,'')
+    .replace(/\bunder (these|the following) terms\b[\s:]*/i,'')
+    .replace(/\s+/g,' ')
+    .replace(/[\s:;,]+$/,'')
+    .trim();
   var prov=Array.isArray(m.provider)?m.provider[0]:m.provider;
   if(prov){
     a.provider=getLabel(prov.label);
@@ -1281,6 +1289,9 @@ async function initEmbed(){
   var pageText='';
   if(ctx.cvs.length>1){
     var pl=(ctx.cLabel||'').trim();
+    // Sequence-index labels ("(seq. 1)" Harvard, "n7" IA, "image 5") number
+    // scans, not pages — no better than the canvas index, so fall back
+    if(/^[\[\(]?\s*(seq\.?|n|img|image)\s*\d+\s*[\]\)]?$/i.test(pl)) pl='';
     if(!pl) pageText='Page '+(ctx.idx+1);
     else if(/^\d+$/.test(pl)) pageText='Page '+pl;
     else pageText=pl;
