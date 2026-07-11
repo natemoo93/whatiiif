@@ -112,7 +112,9 @@ body.is-embed .masthead,body.is-embed footer{display:none}
 body.is-embed main{max-width:none;padding:0}
 #embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
 #embedOsd{flex:1;min-height:0}
-#embedRecenter{display:none;position:absolute;top:.5rem;right:.5rem;z-index:10;font-family:var(--sans);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.3rem .6rem;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.45);color:#eee;cursor:pointer}
+/* hidden until the pointer is over the embed (JS display gate = has-region) */
+#embedRecenter{display:none;position:absolute;top:.5rem;right:.5rem;z-index:10;font-family:var(--sans);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.3rem .6rem;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.45);color:#eee;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s}
+#embedMode:hover #embedRecenter,#embedRecenter:focus-visible{opacity:1;pointer-events:auto}
 #embedRecenter:hover{background:rgba(0,0,0,.75)}
 /* Caption and attribution heights are FIXED — the embed snippet's
    padding-top calc() adds exactly these pixel amounts on top of the crop's
