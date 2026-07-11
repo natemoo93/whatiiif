@@ -495,41 +495,33 @@ var PLATFORMS=[
     }
   },
 
-  // Harvard CURIOSity — catalog page → nrs DRS URN manifest. Primary path
-  // scrapes the item page itself, which links its manifest and serves open
-  // CORS (ACAO *). The fetch must be DIRECT from the browser: AWS WAF
-  // challenges non-browser clients (202 empty, x-amzn-waf-action: challenge)
-  // and hard-blocks /manifest-proxy (429) — verified 2026-07-11. Fallback is
-  // the Alma/LibraryCloud MMS-ID lookup, but many CURIOSity records (e.g.
-  // Houghton MS Lat 189) are absent from LibraryCloud entirely, so it can't
-  // be the only path. DRS repo codes contain dots (FHCL.HOUGH) — the URN
-  // regexes must allow them. Return the nrs URL, not mps /iiif/3/: nrs 303s
-  // to whichever mps version the object actually has (MS Lat 189 is /iiif/2/).
+  // Harvard CURIOSity — catalog page → Alma/LibraryCloud MMS-ID lookup → nrs
+  // DRS URN manifest. The item page can NOT be read from anywhere: AWS WAF
+  // challenges every fetch without its JS-issued token — scripted clients and
+  // in-browser cross-origin fetch() both get a bodyless 202 (x-amzn-waf-action:
+  // challenge; note r.ok is TRUE on 202), /manifest-proxy gets a hard 429 —
+  // all verified 2026-07-11, don't re-add a page-scrape path. LibraryCloud is
+  // the only route, and it's incomplete: some CURIOSity records (e.g. Houghton
+  // MS Lat 189, MMS 990093532590203941) are absent from it entirely and can't
+  // be resolved (MARC/SRU, Primo, and legacy iiif.lib.harvard.edu all lack the
+  // MMS→URN mapping too). DRS repo codes contain dots (FHCL.HOUGH, RAD.SCHL) —
+  // the URN regex must allow them. Return the nrs URL, not a built mps
+  // /iiif/3/ URL: nrs 303s to whichever mps version the object actually has
+  // (MS Lat 189 is /iiif/2/), and both hops serve ACAO *.
   {
     name:'Harvard CURIOSity',
     pattern:/curiosity\.lib\.harvard\.edu\/[^\/]+\/catalog\/([^\/\?#]+)/,
     toManifest:async function(url){
-      var m=url.match(/curiosity\.lib\.harvard\.edu\/([^\/]+)\/catalog\/([^\/\?#]+)/);
+      var m=url.match(/curiosity\.lib\.harvard\.edu\/[^\/]+\/catalog\/([^\/\?#]+)/);
       if(!m) return null;
+      var mms=m[1].replace(/^\d+-/,''); // strip CURIOSity exhibit prefix, keep the MMS ID
       try{
-        var r=await fetch('https://curiosity.lib.harvard.edu/'+m[1]+'/catalog/'+m[2]);
-        if(r.ok){
-          var html=await r.text();
-          // Prefer the explicit :MANIFEST link; bare URNs on the page can be
-          // thumbnail/derivative objects
-          var urn=html.match(/urn-3:[A-Za-z0-9.]+:\d+(?=:MANIFEST)/i)||html.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
-          if(urn) return 'https://nrs.harvard.edu/'+urn[0]+':MANIFEST';
-          console.warn('[whatiiif] Harvard CURIOSity: no URN in page (WAF challenge is a bodyless 202 with r.ok true)',url);
-        }
-      }catch(e){}
-      var mms=m[2].replace(/^\d+-/,''); // strip CURIOSity exhibit prefix, keep the MMS ID
-      try{
-        var r2=await fetch('https://api.lib.harvard.edu/v2/items.json?q='+encodeURIComponent(mms),{headers:{'Accept':'application/json'}});
-        if(!r2.ok) return null;
-        var text=await r2.text();
-        var urn2=text.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
-        if(!urn2){ console.warn('[whatiiif] Harvard CURIOSity: MMS ID not in LibraryCloud or no URN in record',mms); return null; }
-        return 'https://nrs.harvard.edu/'+urn2[0]+':MANIFEST';
+        var r=await fetch('https://api.lib.harvard.edu/v2/items.json?q='+encodeURIComponent(mms),{headers:{'Accept':'application/json'}});
+        if(!r.ok) return null;
+        var text=await r.text();
+        var urn=text.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
+        if(!urn){ console.warn('[whatiiif] Harvard CURIOSity: MMS ID not in LibraryCloud or no URN in record',mms); return null; }
+        return 'https://nrs.harvard.edu/'+urn[0]+':MANIFEST';
       }catch(e){ return null; }
     }
   },
@@ -1001,7 +993,17 @@ window.handleLoad=async function(){
     if(!ok) offerHeuristicCheck(url);
     return;
   }
-  if(!manifestUrl){ showErr('Could not construct a manifest URL from that address. Try pasting the manifest URL directly.'); return; }
+  if(!manifestUrl){
+    // CURIOSity-specific rescue: some records are absent from LibraryCloud and
+    // the item page is unreadable (AWS WAF) — but every item page shows an
+    // "IIIF manifest" link the user can copy by hand.
+    if(platform.name==='Harvard CURIOSity'){
+      showErr('This record isn\'t in Harvard\'s public API. Copy the IIIF manifest link from the CURIOSity item page (next to the viewer) and paste it here.');
+      return;
+    }
+    showErr('Could not construct a manifest URL from that address. Try pasting the manifest URL directly.');
+    return;
+  }
   // Unwrap proxy URL so the shareable link contains the real manifest URL, not a relative proxy path
   resolvedManifestUrl=manifestUrl.startsWith('/manifest-proxy?url=')
     ? decodeURIComponent(manifestUrl.replace('/manifest-proxy?url=',''))
