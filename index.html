@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -120,15 +118,6 @@ body.is-embed main{max-width:none;padding:0}
 .embed-attr a{color:var(--accent);text-decoration:none;white-space:nowrap;flex-shrink:0}
 .embed-attr a:hover{text-decoration:underline}
 .embed-attr .ea-cite{color:var(--ink-faint);font-size:.62rem}
-
-/* embed generator */
-.emb-controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.6rem 0 .9rem}
-.emb-group{display:flex;align-items:center;gap:.35rem}
-.emb-group label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);white-space:nowrap}
-.emb-group input[type=number]{width:4.5rem;font-family:monospace;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink)}
-.emb-group input[type=color]{width:2rem;height:1.6rem;padding:0;border:1px solid var(--rule);background:none;cursor:pointer}
-#embedPreviewWrap{position:relative;width:100%;border:1px solid var(--rule);background:#111;margin-bottom:1rem}
-#embedPreviewWrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
 
 footer{border-top:1px solid var(--rule);padding:.9rem 2rem;font-size:.68rem;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem}
 footer a{color:var(--ink-faint);text-decoration:none}
@@ -277,7 +266,6 @@ footer a:hover{color:var(--ink)}
     <div class="actions">
       <a class="btn is-accent" id="hlSourceLink" href="#" target="_blank">View full document ↗</a>
       <button class="btn" id="hlFullResBtn" onclick="downloadFullRes()">Full resolution ↓</button>
-      <button class="btn" onclick="toggleEmbedGen()">Create iframe</button>
       <button class="btn" onclick="switchToViewer()">Edit this selection</button>
       <button class="btn" onclick="startOver()">Start over</button>
     </div>
@@ -287,40 +275,15 @@ footer a:hover{color:var(--ink)}
         <div class="url-box" id="hlShareUrl"></div>
         <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
       </div>
+      <p class="share-label" style="margin-top:.75rem">Embed iframe</p>
+      <div class="url-row">
+        <div class="url-box" id="hlEmbedCode" style="font-size:.7rem"></div>
+        <button class="copy-btn" id="hlEmbedCopyBtn" onclick="copyHlEmbed()">Copy</button>
+      </div>
       <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> (paste into any compatible viewer, or <a id="hlTheseusLink" href="#" target="_blank" style="color:inherit">open in Theseus ↗</a>)</p>
       <div class="url-row">
         <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
         <button class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
-      </div>
-    </div>
-
-    <!-- EMBED GENERATOR -->
-    <div class="share-bar" id="embedGen" style="display:none">
-      <p class="share-label">Embed in Canvas or another course site</p>
-      <div class="emb-controls">
-        <div class="emb-group">
-          <label>Size</label>
-          <button class="ratio-btn emb-preset" onclick="setEmbedPreset(480,360,this)">Small</button>
-          <button class="ratio-btn emb-preset is-active" onclick="setEmbedPreset(640,480,this)">Medium</button>
-          <button class="ratio-btn emb-preset" onclick="setEmbedPreset(800,600,this)">Large</button>
-          <button class="ratio-btn emb-preset" onclick="setEmbedPreset(800,450,this)">Wide 16:9</button>
-        </div>
-        <div class="emb-group"><label for="embW">W</label><input type="number" id="embW" value="640" min="200" max="2000" oninput="onEmbedOpt()"></div>
-        <div class="emb-group"><label for="embH">H</label><input type="number" id="embH" value="480" min="150" max="2000" oninput="onEmbedOpt()"></div>
-        <div class="emb-group"><label for="embBg">Background</label><input type="color" id="embBg" value="#111111" oninput="onEmbedOpt()"></div>
-        <div class="emb-group"><label for="embNav">Navigator</label><input type="checkbox" id="embNav" checked onchange="onEmbedOpt()"></div>
-      </div>
-      <p class="ub-label">Live preview</p>
-      <div id="embedPreviewWrap"><iframe id="embedPreviewFrame" title="Embed preview" loading="lazy" allow="fullscreen"></iframe></div>
-      <p class="ub-label">Embed code — paste into your LMS editor's HTML view</p>
-      <div class="url-row">
-        <div class="url-box" id="embedSnippet"></div>
-        <button class="copy-btn" id="embedSnippetCopy" onclick="copyEmbedSnippet()">Copy</button>
-      </div>
-      <p class="ub-label" style="margin-top:.75rem">Fallback link — if the embed doesn't appear, ask your LMS admin to allowlist whatiiif.com</p>
-      <div class="url-row">
-        <div class="url-box" id="embedFallback"></div>
-        <button class="copy-btn" id="embedFallbackCopy" onclick="copyEmbedFallback()">Copy</button>
       </div>
     </div>
   </div>
@@ -332,8 +295,8 @@ footer a:hover{color:var(--ink)}
       <img id="eaLogo" alt="" style="display:none">
       <span class="ea-text" id="eaText"></span>
       <a id="eaRights" href="#" target="_blank" rel="noopener" style="display:none"></a>
-      <a id="eaSource" href="#" target="_blank" rel="noopener">View source ↗</a>
-      <a id="eaCite" class="ea-cite" href="#" target="_blank" rel="noopener">Cite this view</a>
+      <a id="eaSource" href="#" target="_blank" rel="noopener">Source</a>
+      <a id="eaCite" class="ea-cite" href="#" target="_blank" rel="noopener">View</a>
     </div>
   </div>
 </main>
@@ -1089,6 +1052,7 @@ async function initHighlight(){
   $('hlSourceLink').href=instUrl;
   $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').textContent=location.href;
+  $('hlEmbedCode').textContent=buildEmbedSnippet();
 
   // Generate a companion IIIF Content State (spec 1.0) value — the bare
   // encoded token, ready for any viewer's ?iiif-content= parameter
@@ -1179,16 +1143,16 @@ function prettyRights(url){
   if(rs) return rs[1].replace(/-/g,' ');
   return 'Rights';
 }
-function sanitizeBg(v){
-  return (v&&/^[0-9a-fA-F]{3,8}$/.test(v))?'#'+v:'#111';
-}
 function embedErr(msg){
-  $('embedOsd').innerHTML='<div style="color:#ccc;font-size:.8rem;padding:1.5rem;text-align:center">'+esc(msg)+'</div>';
+  // Failure inside the iframe: show the message with a fallback deep link
+  // out to the full whatiiif view.
+  var link=pManifest?EMBED_ORIGIN+'/?'+buildEmbedParams().toString():EMBED_ORIGIN;
+  $('embedOsd').innerHTML='<div style="color:#ccc;font-size:.8rem;padding:1.5rem;text-align:center;line-height:1.6">'+esc(msg)+
+    '<br><a href="'+esc(link)+'" target="_blank" rel="noopener" style="color:var(--accent-light)">Open this view on whatiiif.com ↗</a></div>';
 }
 async function initEmbed(){
   document.body.classList.add('is-embed');
   show('embedMode','flex');
-  $('embedOsd').style.background=sanitizeBg(params.get('bg'));
   if(!pManifest){ embedErr('Missing manifest parameter.'); return; }
   var ctx=hlCtx=await resolveHighlightContext();
 
@@ -1206,36 +1170,40 @@ async function initEmbed(){
 
   if(!ctx.ok){ embedErr(ctx.error||'Could not load this view.'); return; }
 
-  var rx=null,ry=0,rw=0,rh=0;
+  // The embed shows only the crop: clip the tiled image to the xywh region
+  // (image-pixel coords). No highlight overlay — the crop IS the view.
+  var clip=null;
   if(pXywh){
     var pts=pXywh.split(',').map(Number);
-    if(pts.length===4&&pts.every(function(n){return !isNaN(n);})){ rx=pts[0];ry=pts[1];rw=pts[2];rh=pts[3]; }
+    if(pts.length===4&&pts.every(function(n){return !isNaN(n);})){
+      clip=new OpenSeadragon.Rect(pts[0],pts[1],pts[2],pts[3]);
+    }
   }
   var v=OpenSeadragon({
     id:'embedOsd',
     prefixUrl:'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/images/',
-    tileSources:ctx.svcBase.replace(/\/+$/,'')+'/info.json',
-    showNavigator:params.get('nav')!=='0',
-    navigatorPosition:'BOTTOM_RIGHT',
+    tileSources:{
+      tileSource:ctx.svcBase.replace(/\/+$/,'')+'/info.json',
+      clip:clip
+    },
+    showNavigator:false,
     gestureSettingsMouse:{clickToZoom:false},
     gestureSettingsTouch:{clickToZoom:false},
   });
   v.addHandler('open-failed',function(){ embedErr('Could not load the image from the source institution.'); });
-  v.addHandler('open',function(){
-    if(rx===null) return;
-    var vpRect=v.viewport.imageToViewportRectangle(rx,ry,rw,rh);
-    var hl=document.createElement('div');
-    hl.style.cssText='border:2px solid #65a30d;background:rgba(173,255,47,0.22);box-sizing:border-box;pointer-events:none';
-    v.addOverlay({element:hl,location:vpRect});
-    var pad=Math.max(vpRect.width,vpRect.height)*0.06;
-    v.viewport.fitBounds(new OpenSeadragon.Rect(vpRect.x-pad,vpRect.y-pad,vpRect.width+pad*2,vpRect.height+pad*2),true);
-  });
+  // Fit the crop on open AND on every container resize: when the host page
+  // (Canvas etc.) resizes the iframe, the crop rescales to fill the new box
+  // instead of the viewport widening to reveal more of the page. The clip
+  // already guarantees nothing outside the region can ever render.
+  var fitClip=function(){
+    if(!clip) return;
+    v.viewport.fitBounds(v.viewport.imageToViewportRectangle(clip),true);
+  };
+  v.addHandler('open',fitClip);
+  v.addHandler('resize',function(){ setTimeout(fitClip,0); });
 }
 
-/* ══ EMBED GENERATOR (highlight page) ══ */
-var EMBED_DEFAULT_BG='#111111';
-var embedOpts={w:640,h:480,bg:EMBED_DEFAULT_BG,nav:true};
-
+/* ══ EMBED SNIPPET (highlight page "Embed iframe" row) ══ */
 function buildEmbedParams(){
   var p=new URLSearchParams();
   p.set('manifest',pManifest);
@@ -1245,62 +1213,24 @@ function buildEmbedParams(){
   if(hlCtx&&hlCtx.svcBase) p.set('svc',hlCtx.svcBase);
   return p;
 }
-function buildEmbedUrl(){
-  var p=buildEmbedParams();
-  if(embedOpts.bg.toLowerCase()!==EMBED_DEFAULT_BG) p.set('bg',embedOpts.bg.replace(/^#/,''));
-  if(!embedOpts.nav) p.set('nav','0');
-  return EMBED_ORIGIN+'/embed?'+p.toString();
-}
 function embedTitle(){
   var t=pLabel||(hlCtx&&hlCtx.cLabel)||'Highlighted region';
   if(hlCtx&&hlCtx.mLabel) t+=' — '+hlCtx.mLabel;
   return 'Interactive IIIF viewer: '+t;
 }
-window.toggleEmbedGen=function(){
-  var g=$('embedGen');
-  if(g.style.display==='none'||!g.style.display){
-    g.style.display='block';
-    updateEmbedGen();
-    g.scrollIntoView({behavior:'smooth',block:'nearest'});
-  } else {
-    g.style.display='none';
-  }
-};
-window.setEmbedPreset=function(w,h,btn){
-  embedOpts.w=w; embedOpts.h=h;
-  $('embW').value=w; $('embH').value=h;
-  document.querySelectorAll('.emb-preset').forEach(function(b){b.classList.remove('is-active');});
-  if(btn) btn.classList.add('is-active');
-  updateEmbedGen();
-};
-window.onEmbedOpt=function(){
-  var w=parseInt($('embW').value,10), h=parseInt($('embH').value,10);
-  if(w>=200&&w<=2000) embedOpts.w=w;
-  if(h>=150&&h<=2000) embedOpts.h=h;
-  embedOpts.bg=$('embBg').value||EMBED_DEFAULT_BG;
-  embedOpts.nav=$('embNav').checked;
-  document.querySelectorAll('.emb-preset').forEach(function(b){b.classList.remove('is-active');});
-  updateEmbedGen();
-};
-function updateEmbedGen(){
-  var url=buildEmbedUrl();
-  var w=embedOpts.w, h=embedOpts.h;
-  var wrap=$('embedPreviewWrap');
-  wrap.style.maxWidth=w+'px';
-  wrap.style.aspectRatio=w+' / '+h;
-  var fr=$('embedPreviewFrame');
-  fr.title=embedTitle();
-  // Only touch src when the URL actually changed — size tweaks shouldn't reload
-  if(fr.getAttribute('src')!==url) fr.setAttribute('src',url);
-  $('embedSnippet').textContent=
-    '<div style="position:relative;width:100%;max-width:'+w+'px;aspect-ratio:'+w+' / '+h+'">\n'+
-    '  <iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" loading="lazy" allow="fullscreen"\n'+
-    '    style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"></iframe>\n'+
-    '</div>';
-  $('embedFallback').textContent=EMBED_ORIGIN+'/?'+buildEmbedParams().toString();
+function buildEmbedSnippet(){
+  var url=EMBED_ORIGIN+'/embed?'+buildEmbedParams().toString();
+  // Aspect ratio follows the crop itself (falls back to full-page dims)
+  var w=640,h=480;
+  if(pXywh){
+    var pts=pXywh.split(',').map(Number);
+    if(pts.length===4&&pts[2]>0&&pts[3]>0){ w=pts[2];h=pts[3]; }
+  } else if(hlCtx&&hlCtx.cW&&hlCtx.cH){ w=hlCtx.cW;h=hlCtx.cH; }
+  return '<div style="position:relative;width:100%;max-width:640px;aspect-ratio:'+w+' / '+h+'">'+
+    '<iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" loading="lazy" '+
+    'style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"></iframe></div>';
 }
-window.copyEmbedSnippet=function(){ copyText($('embedSnippet').textContent,'embedSnippetCopy'); };
-window.copyEmbedFallback=function(){ copyText($('embedFallback').textContent,'embedFallbackCopy'); };
+window.copyHlEmbed=function(){ copyText($('hlEmbedCode').textContent,'hlEmbedCopyBtn'); };
 
 /* ══ VIEWER MODE ══ */
 async function loadManifest(url,jumpTo){
