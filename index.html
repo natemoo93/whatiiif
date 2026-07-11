@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1246,16 +1244,15 @@ function buildEmbedSnippet(){
     var pts=pXywh.split(',').map(Number);
     if(pts.length===4&&pts[2]>0&&pts[3]>0){ w=pts[2];h=pts[3]; }
   } else if(hlCtx&&hlCtx.cW&&hlCtx.cH){ w=hlCtx.cW;h=hlCtx.cH; }
-  // padding-top = crop ratio (width-relative %) + the embed's fixed chrome
-  // height in px (46px attribution bar, +44px caption when a label exists —
-  // keep in sync with .embed-attr/.embed-caption heights). This keeps the
-  // viewer area at exactly the region's proportions at any width, so the
-  // fit never widens to reveal content beside the crop.
-  var chrome=46+(pLabel?44:0);
-  var pct=(h/w*100).toFixed(2);
-  return '<div style="position:relative;width:100%;max-width:640px;padding-top:calc('+pct+'% + '+chrome+'px)">'+
-    '<iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" loading="lazy" '+
-    'style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"></iframe></div>';
+  // Fixed-size iframe: viewer area is exactly the crop's proportions at
+  // 640px wide, plus the embed's fixed chrome (46px attribution bar, +44px
+  // caption when a label exists — keep in sync with .embed-attr/
+  // .embed-caption heights). Plain width/height attributes survive LMS
+  // sanitizers that strip wrappers and calc() styles.
+  var iw=640;
+  var ih=Math.round(iw*h/w)+46+(pLabel?44:0);
+  return '<iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" '+
+    'width="'+iw+'" height="'+ih+'" loading="lazy" style="border:0"></iframe>';
 }
 window.copyHlEmbed=function(){ copyText($('hlEmbedCode').textContent,'hlEmbedCopyBtn'); };
 
