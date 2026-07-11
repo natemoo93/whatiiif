@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,6 +109,27 @@ details[open] .refine-summary::after{content:' ↑'}
 .mv a:hover{text-decoration:underline}
 .share-bar{margin-top:1.75rem;border-top:1px solid var(--rule);padding-top:1.1rem}
 .share-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.4rem}
+/* embed mode (/embed — framable, chromeless view) */
+body.is-embed .masthead,body.is-embed footer{display:none}
+body.is-embed main{max-width:none;padding:0}
+#embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
+#embedOsd{flex:1;min-height:0}
+.embed-attr{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;background:var(--paper);border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
+.embed-attr img{height:18px;width:auto;flex-shrink:0}
+.embed-attr .ea-text{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical}
+.embed-attr a{color:var(--accent);text-decoration:none;white-space:nowrap;flex-shrink:0}
+.embed-attr a:hover{text-decoration:underline}
+.embed-attr .ea-cite{color:var(--ink-faint);font-size:.62rem}
+
+/* embed generator */
+.emb-controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.6rem 0 .9rem}
+.emb-group{display:flex;align-items:center;gap:.35rem}
+.emb-group label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);white-space:nowrap}
+.emb-group input[type=number]{width:4.5rem;font-family:monospace;font-size:.78rem;padding:.3rem .4rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink)}
+.emb-group input[type=color]{width:2rem;height:1.6rem;padding:0;border:1px solid var(--rule);background:none;cursor:pointer}
+#embedPreviewWrap{position:relative;width:100%;border:1px solid var(--rule);background:#111;margin-bottom:1rem}
+#embedPreviewWrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+
 footer{border-top:1px solid var(--rule);padding:.9rem 2rem;font-size:.68rem;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem}
 footer a{color:var(--ink-faint);text-decoration:none}
 footer a:hover{color:var(--ink)}
@@ -254,6 +277,7 @@ footer a:hover{color:var(--ink)}
     <div class="actions">
       <a class="btn is-accent" id="hlSourceLink" href="#" target="_blank">View full document ↗</a>
       <button class="btn" id="hlFullResBtn" onclick="downloadFullRes()">Full resolution ↓</button>
+      <button class="btn" onclick="toggleEmbedGen()">Create iframe</button>
       <button class="btn" onclick="switchToViewer()">Edit this selection</button>
       <button class="btn" onclick="startOver()">Start over</button>
     </div>
@@ -268,6 +292,48 @@ footer a:hover{color:var(--ink)}
         <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
         <button class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
       </div>
+    </div>
+
+    <!-- EMBED GENERATOR -->
+    <div class="share-bar" id="embedGen" style="display:none">
+      <p class="share-label">Embed in Canvas or another course site</p>
+      <div class="emb-controls">
+        <div class="emb-group">
+          <label>Size</label>
+          <button class="ratio-btn emb-preset" onclick="setEmbedPreset(480,360,this)">Small</button>
+          <button class="ratio-btn emb-preset is-active" onclick="setEmbedPreset(640,480,this)">Medium</button>
+          <button class="ratio-btn emb-preset" onclick="setEmbedPreset(800,600,this)">Large</button>
+          <button class="ratio-btn emb-preset" onclick="setEmbedPreset(800,450,this)">Wide 16:9</button>
+        </div>
+        <div class="emb-group"><label for="embW">W</label><input type="number" id="embW" value="640" min="200" max="2000" oninput="onEmbedOpt()"></div>
+        <div class="emb-group"><label for="embH">H</label><input type="number" id="embH" value="480" min="150" max="2000" oninput="onEmbedOpt()"></div>
+        <div class="emb-group"><label for="embBg">Background</label><input type="color" id="embBg" value="#111111" oninput="onEmbedOpt()"></div>
+        <div class="emb-group"><label for="embNav">Navigator</label><input type="checkbox" id="embNav" checked onchange="onEmbedOpt()"></div>
+      </div>
+      <p class="ub-label">Live preview</p>
+      <div id="embedPreviewWrap"><iframe id="embedPreviewFrame" title="Embed preview" loading="lazy" allow="fullscreen"></iframe></div>
+      <p class="ub-label">Embed code — paste into your LMS editor's HTML view</p>
+      <div class="url-row">
+        <div class="url-box" id="embedSnippet"></div>
+        <button class="copy-btn" id="embedSnippetCopy" onclick="copyEmbedSnippet()">Copy</button>
+      </div>
+      <p class="ub-label" style="margin-top:.75rem">Fallback link — if the embed doesn't appear, ask your LMS admin to allowlist whatiiif.com</p>
+      <div class="url-row">
+        <div class="url-box" id="embedFallback"></div>
+        <button class="copy-btn" id="embedFallbackCopy" onclick="copyEmbedFallback()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMBED MODE (/embed — rendered inside third-party iframes) -->
+  <div id="embedMode">
+    <div id="embedOsd"></div>
+    <div class="embed-attr">
+      <img id="eaLogo" alt="" style="display:none">
+      <span class="ea-text" id="eaText"></span>
+      <a id="eaRights" href="#" target="_blank" rel="noopener" style="display:none"></a>
+      <a id="eaSource" href="#" target="_blank" rel="noopener">View source ↗</a>
+      <a id="eaCite" class="ea-cite" href="#" target="_blank" rel="noopener">Cite this view</a>
     </div>
   </div>
 </main>
@@ -776,7 +842,17 @@ if(pIiifContent && !pManifest){
   }
 }
 
-if(pManifest && pXywh){
+/* Absolute base for generated embed/landing URLs. On the GH Pages origin
+   (path-prefixed, no /embed route) generated links must point at the
+   Worker-served domain, where /embed exists and gets frame-ancestors *. */
+var EMBED_ORIGIN=(/(^|\.)whatiiif\.com$/.test(location.hostname)||location.hostname==='localhost'||location.hostname==='127.0.0.1')
+  ?location.origin:'https://whatiiif.com';
+var isEmbedMode=/\/embed\/?$/.test(location.pathname);
+
+if(isEmbedMode){
+  // Chromeless framable viewer — served at /embed by the Worker
+  initEmbed();
+} else if(pManifest && pXywh){
   // Full highlight link — show the highlight view
   show('stateMsg');
   $('stateMsg').textContent='Resolving manifest…';
@@ -847,66 +923,131 @@ window.handleLoad=async function(){
   await loadManifest(manifestUrl);
 };
 
-/* ══ HIGHLIGHT MODE ══ */
-async function initHighlight(){
-  console.log('[whatiiif-debug] initHighlight start, pManifest:',pManifest);
+/* ══ SHARED RESOLUTION PATH ══
+   manifest → canvas → info.json → service base. Used by both the highlight
+   landing page (initHighlight) and the /embed viewer (initEmbed) — one path,
+   do not fork. */
+var hlCtx=null;
+async function resolveHighlightContext(){
+  var ctx={ok:false,error:null,errorKind:null,m:null,cvs:[],idx:pCanvas,canvas:null,canvasId:'',
+           manifestId:pManifest,mLabel:'',cLabel:'',cW:1000,cH:1400,svcBase:pSvc||null};
+  console.log('[whatiiif-debug] resolveHighlightContext start, pManifest:',pManifest);
   var result=await fetchManifest(pManifest);
   console.log('[whatiiif-debug] fetchManifest result:',{ok:result.ok,error:result.error,hasData:!!result.data});
-  var m=null, cvs=[], idx=pCanvas, canvas=null, canvasId='', manifestId=pManifest;
-  var mLabel='', cLabel='', cW=1000, cH=1400, svcBase=pSvc||null;
 
   if(result.ok){
-    m=result.data;
-    cvs=getCanvases(m);
-    console.log('[whatiiif-debug] canvases found:',cvs.length);
-    if(!cvs.length){ showErr('No canvases found.'); return; }
+    ctx.m=result.data;
+    ctx.cvs=getCanvases(ctx.m);
+    console.log('[whatiiif-debug] canvases found:',ctx.cvs.length);
+    if(!ctx.cvs.length){ ctx.error='No canvases found.'; ctx.errorKind='nocanvas'; return ctx; }
     // If Content State supplied a canvas URI, resolve it to an index in this manifest
     if(pContentStateCanvasId){
-      var foundIdx=cvs.findIndex(function(c){return (c['@id']||c.id)===pContentStateCanvasId;});
-      if(foundIdx>-1) idx=foundIdx;
+      var foundIdx=ctx.cvs.findIndex(function(c){return (c['@id']||c.id)===pContentStateCanvasId;});
+      if(foundIdx>-1) ctx.idx=foundIdx;
     }
-    idx=Math.min(idx,cvs.length-1);
-    canvas=cvs[idx];
-    canvasId=canvas['@id']||canvas.id||'';
-    console.log('[whatiiif-debug]',JSON.stringify({canvasId:canvasId,atId:canvas['@id']||null,id:canvas.id||null,canvasKeys:Object.keys(canvas),manifestContext:m['@context']||null}));
-    manifestId=m['@id']||m.id||pManifest;
-    mLabel=getLabel(m.label);
-    cLabel=getLabel(canvas.label);
-    var dims=getCanvasDimensions(canvas);cW=dims.cW;cH=dims.cH;
-    svcBase=getServiceBase(canvas)||pSvc;
+    ctx.idx=Math.min(ctx.idx,ctx.cvs.length-1);
+    ctx.canvas=ctx.cvs[ctx.idx];
+    ctx.canvasId=ctx.canvas['@id']||ctx.canvas.id||'';
+    ctx.manifestId=ctx.m['@id']||ctx.m.id||pManifest;
+    ctx.mLabel=getLabel(ctx.m.label);
+    ctx.cLabel=getLabel(ctx.canvas.label);
+    var dims=getCanvasDimensions(ctx.canvas);ctx.cW=dims.cW;ctx.cH=dims.cH;
+    ctx.svcBase=getServiceBase(ctx.canvas)||pSvc;
     // Selection coords are captured in the image service's pixel space (what
     // OSD displays), and some canvases disagree with it — ChronAm's Evening
     // Star reports canvas 6130x9560 over a 4751x7409 service, shifting the
     // highlight rect left. Prefer info.json dims; keep canvas dims as fallback.
-    if(svcBase){
+    if(ctx.svcBase){
       try{
-        var hlInfoR=await fetch(svcBase.replace(/\/+$/,'')+'/info.json',{headers:{'Accept':'application/json, application/ld+json'}});
+        var hlInfoR=await fetch(ctx.svcBase.replace(/\/+$/,'')+'/info.json',{headers:{'Accept':'application/json, application/ld+json'}});
         if(hlInfoR.ok){
           var hlInfo=await hlInfoR.json();
-          if(hlInfo.width&&hlInfo.height){cW=hlInfo.width;cH=hlInfo.height;}
+          if(hlInfo.width&&hlInfo.height){ctx.cW=hlInfo.width;ctx.cH=hlInfo.height;}
         }
       }catch(e){/* keep canvas dims */}
     }
   } else if(pSvc){
     // Manifest fetch failed but we have the service base from the URL — render with minimal metadata
-    svcBase=pSvc;
+    ctx.svcBase=pSvc;
     // Fetch dimensions from IIIF Image API info.json since we don't have canvas dimensions
     try{
-      var infoR=await fetch(svcBase.replace(/\/+$/,'')+'/info.json',{headers:{'Accept':'application/json, application/ld+json'}});
+      var infoR=await fetch(ctx.svcBase.replace(/\/+$/,'')+'/info.json',{headers:{'Accept':'application/json, application/ld+json'}});
       if(infoR.ok){
         var info=await infoR.json();
-        if(info.width) cW=info.width;
-        if(info.height) cH=info.height;
+        if(info.width) ctx.cW=info.width;
+        if(info.height) ctx.cH=info.height;
       }
     }catch(e){/* fall through with defaults */}
   } else {
-    $('stateMsg').className='state is-err';
-    var isWorkerMsg563=result.error&&(result.error.includes('Internet Archive')||result.error.includes('Library of Congress')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
-    $('stateMsg').textContent='Could not load manifest: '+result.error+(isWorkerMsg563?'':' The source server may not permit cross-origin requests.');
-    return;
+    ctx.error=result.error; ctx.errorKind='fetch'; return ctx;
   }
 
-  if(!svcBase){ showErr('Could not resolve image service.'); return; }
+  if(!ctx.svcBase){ ctx.error='Could not resolve image service.'; ctx.errorKind='nosvc'; return ctx; }
+  ctx.ok=true;
+  return ctx;
+}
+
+/* Institutional page URL from canvas or manifest related/homepage fields.
+   Shared by the highlight page ("View at institution") and the embed
+   attribution bar ("View source"). */
+function resolveInstitutionUrl(ctx){
+  var m=ctx.m, canvas=ctx.canvas, manifestId=ctx.manifestId, idx=ctx.idx;
+  if(canvas){
+    var rel=canvas.related||(canvas.homepage&&(Array.isArray(canvas.homepage)?canvas.homepage[0]:canvas.homepage))||null;
+    if(rel){ var ru=rel['@id']||rel.id||rel; if(typeof ru==='string'&&ru.startsWith('http')) return ru; }
+  }
+  if(m){
+    var mRel=m.related||(m.homepage&&(Array.isArray(m.homepage)?m.homepage[0]:m.homepage))||null;
+    if(mRel){ var mru=mRel['@id']||mRel.id||mRel; if(typeof mru==='string'&&mru.startsWith('http')) return mru; }
+    // rendering with format text/html is the manifest's canonical
+    // human-viewable page (Princeton/Figgy uses it; related/homepage absent)
+    if(m.rendering){
+      var rend=Array.isArray(m.rendering)?m.rendering:[m.rendering];
+      for(var ri=0;ri<rend.length;ri++){
+        var rd=rend[ri];
+        if(rd&&rd.format==='text/html'){
+          var rdu=rd['@id']||rd.id;
+          if(typeof rdu==='string'&&rdu.startsWith('http')) return rdu;
+        }
+      }
+    }
+  }
+  // Harvard: reconstruct viewer URL from nrs.lib.harvard.edu URN manifest id
+  var harvM=(manifestId||'').match(/^https?:\/\/nrs\.lib\.harvard\.edu\/(URN-3:.+?):MANIFEST:\d+$/i);
+  if(harvM) return 'https://viewer.lib.harvard.edu/viewer/'+harvM[1];
+  // Cambridge: manifests lack related/homepage; /iiif/{id} inverts to /view/{id}
+  // (must stay in sync with the forward CUDL handler). /{idx+1} deep-links the page.
+  var cudlM=(manifestId||pManifest||'').match(/^https?:\/\/cudl\.lib\.cam\.ac\.uk\/iiif\/([^\/\?#]+)/);
+  if(cudlM) return 'https://cudl.lib.cam.ac.uk/view/'+cudlM[1]+'/'+(idx+1);
+  // UCLA: manifests lack homepage/related; decode the percent-encoded ARK
+  // back out to the catalog page (sync with the forward UCLA handler).
+  var uclaM=(manifestId||pManifest||'').match(/^https?:\/\/iiif\.library\.ucla\.edu\/(ark(?:%3A|:)[^\/]+)\/manifest/i);
+  if(uclaM){
+    try{ return 'https://digital.library.ucla.edu/catalog/'+decodeURIComponent(uclaM[1]); }catch(e){}
+  }
+  // CONTENTdm: reconstruct item page from @id (colon format) or info URL
+  var cdmBase=manifestId||pManifest||'';
+  var cdmM=cdmBase.match(/^(https?:\/\/[^\/]+)\/iiif\/([^:\/]+):(\d+)(?:\/manifest)?/);
+  if(!cdmM) cdmM=cdmBase.match(/^(https?:\/\/[^\/]+)\/iiif\/info\/([^\/]+)\/(\d+)\/manifest\.json$/);
+  if(cdmM) return cdmM[1]+'/digital/collection/'+cdmM[2]+'/id/'+cdmM[3];
+  return originalInputUrl||(manifestId?manifestId.replace(/\/manifest\.json$/,'').replace(/\/+$/,''):pManifest);
+}
+
+/* ══ HIGHLIGHT MODE ══ */
+async function initHighlight(){
+  var ctx=hlCtx=await resolveHighlightContext();
+  if(!ctx.ok){
+    if(ctx.errorKind==='fetch'){
+      $('stateMsg').className='state is-err';
+      var isWorkerMsg563=ctx.error&&(ctx.error.includes('Internet Archive')||ctx.error.includes('Library of Congress')||ctx.error.includes('source institution')||ctx.error.includes('Manifest not found')||ctx.error.includes('Access denied'));
+      $('stateMsg').textContent='Could not load manifest: '+ctx.error+(isWorkerMsg563?'':' The source server may not permit cross-origin requests.');
+    } else {
+      showErr(ctx.error);
+    }
+    return;
+  }
+  var m=ctx.m, cvs=ctx.cvs, idx=ctx.idx, canvas=ctx.canvas, canvasId=ctx.canvasId, manifestId=ctx.manifestId;
+  var mLabel=ctx.mLabel, cLabel=ctx.cLabel, cW=ctx.cW, cH=ctx.cH, svcBase=ctx.svcBase;
 
   var region='full',rx=0,ry=0,rw=cW,rh=cH;
   if(pXywh){
@@ -944,47 +1085,7 @@ async function initHighlight(){
   if(pXywh) row('Fragment',esc(canvasId+'#xywh='+pXywh));
 
   // Resolve institutional page URL from canvas or manifest related/homepage fields
-  var instUrl=(function(){
-    if(canvas){
-      var rel=canvas.related||(canvas.homepage&&(Array.isArray(canvas.homepage)?canvas.homepage[0]:canvas.homepage))||null;
-      if(rel){ var ru=rel['@id']||rel.id||rel; if(typeof ru==='string'&&ru.startsWith('http')) return ru; }
-    }
-    if(m){
-      var mRel=m.related||(m.homepage&&(Array.isArray(m.homepage)?m.homepage[0]:m.homepage))||null;
-      if(mRel){ var mru=mRel['@id']||mRel.id||mRel; if(typeof mru==='string'&&mru.startsWith('http')) return mru; }
-      // rendering with format text/html is the manifest's canonical
-      // human-viewable page (Princeton/Figgy uses it; related/homepage absent)
-      if(m.rendering){
-        var rend=Array.isArray(m.rendering)?m.rendering:[m.rendering];
-        for(var ri=0;ri<rend.length;ri++){
-          var rd=rend[ri];
-          if(rd&&rd.format==='text/html'){
-            var rdu=rd['@id']||rd.id;
-            if(typeof rdu==='string'&&rdu.startsWith('http')) return rdu;
-          }
-        }
-      }
-    }
-    // Harvard: reconstruct viewer URL from nrs.lib.harvard.edu URN manifest id
-    var harvM=(manifestId||'').match(/^https?:\/\/nrs\.lib\.harvard\.edu\/(URN-3:.+?):MANIFEST:\d+$/i);
-    if(harvM) return 'https://viewer.lib.harvard.edu/viewer/'+harvM[1];
-    // Cambridge: manifests lack related/homepage; /iiif/{id} inverts to /view/{id}
-    // (must stay in sync with the forward CUDL handler). /{idx+1} deep-links the page.
-    var cudlM=(manifestId||pManifest||'').match(/^https?:\/\/cudl\.lib\.cam\.ac\.uk\/iiif\/([^\/\?#]+)/);
-    if(cudlM) return 'https://cudl.lib.cam.ac.uk/view/'+cudlM[1]+'/'+(idx+1);
-    // UCLA: manifests lack homepage/related; decode the percent-encoded ARK
-    // back out to the catalog page (sync with the forward UCLA handler).
-    var uclaM=(manifestId||pManifest||'').match(/^https?:\/\/iiif\.library\.ucla\.edu\/(ark(?:%3A|:)[^\/]+)\/manifest/i);
-    if(uclaM){
-      try{ return 'https://digital.library.ucla.edu/catalog/'+decodeURIComponent(uclaM[1]); }catch(e){}
-    }
-    // CONTENTdm: reconstruct item page from @id (colon format) or info URL
-    var cdmBase=manifestId||pManifest||'';
-    var cdmM=cdmBase.match(/^(https?:\/\/[^\/]+)\/iiif\/([^:\/]+):(\d+)(?:\/manifest)?/);
-    if(!cdmM) cdmM=cdmBase.match(/^(https?:\/\/[^\/]+)\/iiif\/info\/([^\/]+)\/(\d+)\/manifest\.json$/);
-    if(cdmM) return cdmM[1]+'/digital/collection/'+cdmM[2]+'/id/'+cdmM[3];
-    return originalInputUrl||(manifestId?manifestId.replace(/\/manifest\.json$/,'').replace(/\/+$/,''):pManifest);
-  })();
+  var instUrl=resolveInstitutionUrl(ctx);
   $('hlSourceLink').href=instUrl;
   $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').textContent=location.href;
@@ -1045,6 +1146,161 @@ window.switchToViewer=function(){
 };
 window.copyHlUrl=function(){ copyText($('hlShareUrl').textContent,'hlCopyBtn'); };
 window.copyHlCsUrl=function(){ copyText($('hlContentStateUrl').textContent,'hlCsCopyBtn'); };
+
+/* ══ EMBED MODE (/embed) ══
+   Chromeless, framable viewer for LMS iframes. Tiles load client-side
+   directly from the institution's Image API via OSD — never proxied. */
+function getAttribution(m){
+  var a={statement:'',rights:'',provider:'',logo:''};
+  if(!m) return a;
+  if(m.requiredStatement&&m.requiredStatement.value) a.statement=getLabel(m.requiredStatement.value);
+  else if(m.attribution) a.statement=getLabel(m.attribution);
+  var r=m.rights||m.license||'';
+  if(r&&typeof r!=='string') r=r['@id']||r.id||'';
+  a.rights=typeof r==='string'?r:'';
+  var prov=Array.isArray(m.provider)?m.provider[0]:m.provider;
+  if(prov){
+    a.provider=getLabel(prov.label);
+    var pl=Array.isArray(prov.logo)?prov.logo[0]:prov.logo;
+    if(pl) a.logo=typeof pl==='string'?pl:(pl.id||pl['@id']||'');
+  }
+  if(!a.logo&&m.logo){
+    var ml=Array.isArray(m.logo)?m.logo[0]:m.logo;
+    a.logo=typeof ml==='string'?ml:(ml['@id']||ml.id||'');
+  }
+  return a;
+}
+function prettyRights(url){
+  var cc=url.match(/creativecommons\.org\/licenses\/([a-z-]+)\/([\d.]+)/i);
+  if(cc) return 'CC '+cc[1].toUpperCase()+' '+cc[2];
+  if(/publicdomain\/zero/i.test(url)) return 'CC0';
+  if(/publicdomain\/mark/i.test(url)) return 'Public Domain';
+  var rs=url.match(/rightsstatements\.org\/vocab\/([^\/]+)/i);
+  if(rs) return rs[1].replace(/-/g,' ');
+  return 'Rights';
+}
+function sanitizeBg(v){
+  return (v&&/^[0-9a-fA-F]{3,8}$/.test(v))?'#'+v:'#111';
+}
+function embedErr(msg){
+  $('embedOsd').innerHTML='<div style="color:#ccc;font-size:.8rem;padding:1.5rem;text-align:center">'+esc(msg)+'</div>';
+}
+async function initEmbed(){
+  document.body.classList.add('is-embed');
+  show('embedMode','flex');
+  $('embedOsd').style.background=sanitizeBg(params.get('bg'));
+  if(!pManifest){ embedErr('Missing manifest parameter.'); return; }
+  var ctx=hlCtx=await resolveHighlightContext();
+
+  // Attribution bar renders regardless of load outcome — it is not dismissible
+  var attr=getAttribution(ctx.m);
+  if(attr.logo){ $('eaLogo').src=attr.logo; $('eaLogo').style.display=''; $('eaLogo').onerror=function(){ this.style.display='none'; }; }
+  var attrText=attr.statement||attr.provider||ctx.mLabel||'';
+  if(attr.provider&&attr.statement&&attr.statement.indexOf(attr.provider)===-1) attrText=attr.statement+' — '+attr.provider;
+  $('eaText').textContent=attrText;
+  $('eaText').title=attrText;
+  if(attr.rights){ $('eaRights').href=attr.rights; $('eaRights').textContent=prettyRights(attr.rights); $('eaRights').style.display=''; }
+  var instUrl=resolveInstitutionUrl(ctx);
+  if(instUrl) $('eaSource').href=instUrl;
+  $('eaCite').href=EMBED_ORIGIN+'/?'+buildEmbedParams().toString();
+
+  if(!ctx.ok){ embedErr(ctx.error||'Could not load this view.'); return; }
+
+  var rx=null,ry=0,rw=0,rh=0;
+  if(pXywh){
+    var pts=pXywh.split(',').map(Number);
+    if(pts.length===4&&pts.every(function(n){return !isNaN(n);})){ rx=pts[0];ry=pts[1];rw=pts[2];rh=pts[3]; }
+  }
+  var v=OpenSeadragon({
+    id:'embedOsd',
+    prefixUrl:'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/images/',
+    tileSources:ctx.svcBase.replace(/\/+$/,'')+'/info.json',
+    showNavigator:params.get('nav')!=='0',
+    navigatorPosition:'BOTTOM_RIGHT',
+    gestureSettingsMouse:{clickToZoom:false},
+    gestureSettingsTouch:{clickToZoom:false},
+  });
+  v.addHandler('open-failed',function(){ embedErr('Could not load the image from the source institution.'); });
+  v.addHandler('open',function(){
+    if(rx===null) return;
+    var vpRect=v.viewport.imageToViewportRectangle(rx,ry,rw,rh);
+    var hl=document.createElement('div');
+    hl.style.cssText='border:2px solid #65a30d;background:rgba(173,255,47,0.22);box-sizing:border-box;pointer-events:none';
+    v.addOverlay({element:hl,location:vpRect});
+    var pad=Math.max(vpRect.width,vpRect.height)*0.06;
+    v.viewport.fitBounds(new OpenSeadragon.Rect(vpRect.x-pad,vpRect.y-pad,vpRect.width+pad*2,vpRect.height+pad*2),true);
+  });
+}
+
+/* ══ EMBED GENERATOR (highlight page) ══ */
+var EMBED_DEFAULT_BG='#111111';
+var embedOpts={w:640,h:480,bg:EMBED_DEFAULT_BG,nav:true};
+
+function buildEmbedParams(){
+  var p=new URLSearchParams();
+  p.set('manifest',pManifest);
+  p.set('canvas',String(hlCtx?hlCtx.idx:(pCanvas||0)));
+  if(pXywh) p.set('xywh',pXywh);
+  if(pLabel) p.set('label',pLabel);
+  if(hlCtx&&hlCtx.svcBase) p.set('svc',hlCtx.svcBase);
+  return p;
+}
+function buildEmbedUrl(){
+  var p=buildEmbedParams();
+  if(embedOpts.bg.toLowerCase()!==EMBED_DEFAULT_BG) p.set('bg',embedOpts.bg.replace(/^#/,''));
+  if(!embedOpts.nav) p.set('nav','0');
+  return EMBED_ORIGIN+'/embed?'+p.toString();
+}
+function embedTitle(){
+  var t=pLabel||(hlCtx&&hlCtx.cLabel)||'Highlighted region';
+  if(hlCtx&&hlCtx.mLabel) t+=' — '+hlCtx.mLabel;
+  return 'Interactive IIIF viewer: '+t;
+}
+window.toggleEmbedGen=function(){
+  var g=$('embedGen');
+  if(g.style.display==='none'||!g.style.display){
+    g.style.display='block';
+    updateEmbedGen();
+    g.scrollIntoView({behavior:'smooth',block:'nearest'});
+  } else {
+    g.style.display='none';
+  }
+};
+window.setEmbedPreset=function(w,h,btn){
+  embedOpts.w=w; embedOpts.h=h;
+  $('embW').value=w; $('embH').value=h;
+  document.querySelectorAll('.emb-preset').forEach(function(b){b.classList.remove('is-active');});
+  if(btn) btn.classList.add('is-active');
+  updateEmbedGen();
+};
+window.onEmbedOpt=function(){
+  var w=parseInt($('embW').value,10), h=parseInt($('embH').value,10);
+  if(w>=200&&w<=2000) embedOpts.w=w;
+  if(h>=150&&h<=2000) embedOpts.h=h;
+  embedOpts.bg=$('embBg').value||EMBED_DEFAULT_BG;
+  embedOpts.nav=$('embNav').checked;
+  document.querySelectorAll('.emb-preset').forEach(function(b){b.classList.remove('is-active');});
+  updateEmbedGen();
+};
+function updateEmbedGen(){
+  var url=buildEmbedUrl();
+  var w=embedOpts.w, h=embedOpts.h;
+  var wrap=$('embedPreviewWrap');
+  wrap.style.maxWidth=w+'px';
+  wrap.style.aspectRatio=w+' / '+h;
+  var fr=$('embedPreviewFrame');
+  fr.title=embedTitle();
+  // Only touch src when the URL actually changed — size tweaks shouldn't reload
+  if(fr.getAttribute('src')!==url) fr.setAttribute('src',url);
+  $('embedSnippet').textContent=
+    '<div style="position:relative;width:100%;max-width:'+w+'px;aspect-ratio:'+w+' / '+h+'">\n'+
+    '  <iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" loading="lazy" allow="fullscreen"\n'+
+    '    style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"></iframe>\n'+
+    '</div>';
+  $('embedFallback').textContent=EMBED_ORIGIN+'/?'+buildEmbedParams().toString();
+}
+window.copyEmbedSnippet=function(){ copyText($('embedSnippet').textContent,'embedSnippetCopy'); };
+window.copyEmbedFallback=function(){ copyText($('embedFallback').textContent,'embedFallbackCopy'); };
 
 /* ══ VIEWER MODE ══ */
 async function loadManifest(url,jumpTo){
