@@ -1601,7 +1601,7 @@ function buildSelect(){
   canvases.forEach(function(c,i){
     var o=document.createElement('option');o.value=i;
     var l=getLabel(c.label);
-    o.text='Page '+(i+1)+(l?' — '+l.slice(0,50):'');
+    o.text='Canvas '+(i+1)+(l?' — '+l.slice(0,50):'');
     sel.appendChild(o);
   });
   show('pageNav','flex');
