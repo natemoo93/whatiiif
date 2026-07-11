@@ -403,6 +403,37 @@ var PLATFORMS=[
     toManifest:function(url){ return url; }
   },
 
+  // Illinois State University — Circus Route Books (p15990coll5) ONLY.
+  // CONTENTdm serves a bare single-canvas manifest for child-page URLs,
+  // losing the document title and page navigation. For this collection,
+  // look up the parent compound object (GetParent — NOT dmGetParent, which
+  // isn't a real API function; verified 2026-07-11) via /manifest-proxy
+  // (dmwebservices has no CORS) and load the parent manifest instead,
+  // remembering the child pointer so handleLoad can jump to the pasted
+  // page (canvas ids embed it: .../iiif/p15990coll5:5173/canvas/c0).
+  // GetParent returns {"parent":"5195"} (string) for children, -1 at top.
+  {
+    name:'Illinois State University (Circus Route Books)',
+    pattern:/digital\.library\.illinoisstate\.edu\/digital\/collection\/p15990coll5\/id\/(\d+)/,
+    toManifest:async function(url){
+      var m=url.match(/^(https?:\/\/[^\/]+).*\/digital\/collection\/(p15990coll5)\/id\/(\d+)/);
+      if(!m) return null;
+      var host=m[1],col=m[2],id=m[3];
+      var childManifest=host+'/iiif/info/'+col+'/'+id+'/manifest.json';
+      try{
+        var r=await fetch(PROXY_BASE+'/manifest-proxy?url='+encodeURIComponent(host+'/digital/bl/dmwebservices/index.php?q=GetParent/'+col+'/'+id+'/json'));
+        if(!r.ok) return childManifest;
+        var data=await r.json();
+        var parent=parseInt(data&&data.parent,10);
+        if(parent>0){
+          pendingCanvasChildId=id;
+          return host+'/iiif/info/'+col+'/'+parent+'/manifest.json';
+        }
+      }catch(e){}
+      return childManifest;
+    }
+  },
+
   // CONTENTdm — handles both *.contentdm.oclc.org and custom domains
   {
     name:'CONTENTdm',
@@ -668,7 +699,7 @@ var EXTRA_INSTITUTIONS = [
   PLATFORMS.forEach(function(p){
     // Harvard CURIOSity stays detectable but is folded into the single
     // Harvard Digital Collections list entry (which links to CURIOSity)
-    if(p.name==='Direct manifest URL'||p.name==='IIIF viewer link'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity') return;
+    if(p.name==='Direct manifest URL'||p.name==='IIIF viewer link'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity'||p.name==='Illinois State University (Circus Route Books)') return;
     if(seen[p.name]) return;
     seen[p.name]=true;
     entries.push({name:p.name,url:PLATFORM_LINKS[p.name]||null});
@@ -735,6 +766,10 @@ var manifest=null,canvases=[],currentIdx=0,viewer=null;
 var selState=null,mouseMode='select',dragging=false,dragStart=null;
 var resolvedManifestUrl='';
 var originalInputUrl='';
+// Set by platform handlers that resolve a child page to its parent
+// compound-object manifest (ISU circus route books): the CONTENTdm child
+// pointer to jump to after the parent manifest loads.
+var pendingCanvasChildId=null;
 
 /* ── IIIF Content State API 1.0 encoding ── */
 /* Per https://iiif.io/api/content-state/1.0/#6-content-state-encoding */
@@ -840,6 +875,11 @@ if(pIiifContent && !pManifest){
    Worker-served domain, where /embed exists and gets frame-ancestors *. */
 var EMBED_ORIGIN=(/(^|\.)whatiiif\.com$/.test(location.hostname)||location.hostname==='localhost'||location.hostname==='127.0.0.1')
   ?location.origin:'https://whatiiif.com';
+/* Worker proxy base: relative on whatiiif.com; absolute everywhere else so
+   local testing (file://, GH Pages origin) still reaches /manifest-proxy —
+   its ACAO * makes the cross-origin call work. Without this, handlers that
+   proxy silently fall back and local tests degrade invisibly. */
+var PROXY_BASE=(/(^|\.)whatiiif\.com$/.test(location.hostname))?'':'https://whatiiif.com';
 var isEmbedMode=/\/embed\/?$/.test(location.pathname);
 
 if(isEmbedMode){
@@ -910,6 +950,7 @@ window.handleLoad=async function(){
   originalInputUrl=url;
   if(!url) return;
   removeHeuristicBtn();
+  pendingCanvasChildId=null;
   // Content-state input: a viewer link carrying ?iiif-content= (Theseus,
   // Mirador, some UV builds) or a bare encoded token. Round-trip through our
   // own ?iiif-content= pipeline so canvas URIs, xywh and labels all resolve.
@@ -941,7 +982,17 @@ window.handleLoad=async function(){
     $('detectedPlatform').textContent=platform?'Resolved from '+platform.name:'Resolved by automatic detection';
     $('detectedPlatform').className='detected-platform is-found';
   }
-  await loadManifest(manifestUrl);
+  var loaded=await loadManifest(manifestUrl);
+  // Child-to-parent resolution (ISU): land on the pasted page by matching
+  // the child pointer inside the canvas id or its image service base
+  if(loaded&&pendingCanvasChildId&&canvases.length){
+    var childRe=new RegExp('[/:]'+pendingCanvasChildId+'(/|$)');
+    var childIdx=canvases.findIndex(function(c){
+      return childRe.test(((c['@id']||c.id)||'')+' '+(getServiceBase(c)||''));
+    });
+    if(childIdx>-1) gotoPage(childIdx);
+    pendingCanvasChildId=null;
+  }
 };
 
 /* ══ SHARED RESOLUTION PATH ══
@@ -1220,9 +1271,11 @@ async function initEmbed(){
   // title would just be a defaulted page number
   if(pLabel){ $('eaCaption').textContent=pLabel; $('eaCaption').style.display='block'; }
   if(attr.logo){ $('eaLogo').src=attr.logo; $('eaLogo').style.display=''; $('eaLogo').onerror=function(){ this.style.display='none'; }; }
-  // Line 1: document title + page number
+  // Line 1: document title + page number. Single-canvas manifests skip the
+  // page suffix: CONTENTdm serves per-page manifests for child-page URLs,
+  // where mLabel is already "Page 6" and "— Page 1" is noise (ISU report).
   var titleText=ctx.mLabel||pLabel||'IIIF document';
-  if(ctx.cvs.length) titleText+=' — Page '+(ctx.idx+1);
+  if(ctx.cvs.length>1) titleText+=' — Page '+(ctx.idx+1);
   $('eaTitle').textContent=titleText;
   $('eaTitle').title=titleText;
   // Line 2: institution attribution — statement OR provider, never both
