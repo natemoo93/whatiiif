@@ -519,6 +519,7 @@ var PLATFORMS=[
           // thumbnail/derivative objects
           var urn=html.match(/urn-3:[A-Za-z0-9.]+:\d+(?=:MANIFEST)/i)||html.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
           if(urn) return 'https://nrs.harvard.edu/'+urn[0]+':MANIFEST';
+          console.warn('[whatiiif] Harvard CURIOSity: no URN in page (WAF challenge is a bodyless 202 with r.ok true)',url);
         }
       }catch(e){}
       var mms=m[2].replace(/^\d+-/,''); // strip CURIOSity exhibit prefix, keep the MMS ID
@@ -527,7 +528,7 @@ var PLATFORMS=[
         if(!r2.ok) return null;
         var text=await r2.text();
         var urn2=text.match(/urn-3:[A-Za-z0-9.]+:\d+/i);
-        if(!urn2) return null;
+        if(!urn2){ console.warn('[whatiiif] Harvard CURIOSity: MMS ID not in LibraryCloud or no URN in record',mms); return null; }
         return 'https://nrs.harvard.edu/'+urn2[0]+':MANIFEST';
       }catch(e){ return null; }
     }
