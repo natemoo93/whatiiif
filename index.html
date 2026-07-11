@@ -1280,11 +1280,22 @@ async function initEmbed(){
   // title would just be a defaulted page number
   if(pLabel){ $('eaCaption').textContent=pLabel; $('eaCaption').style.display='block'; }
   if(attr.logo){ $('eaLogo').src=attr.logo; $('eaLogo').style.display=''; $('eaLogo').onerror=function(){ this.style.display='none'; }; }
-  // Line 1: page number BEFORE title — long titles ellipsize at the end, so
-  // trailing page numbers were getting cut off. Single-canvas manifests skip
-  // the page prefix: CONTENTdm serves per-page manifests for child-page
-  // URLs, where mLabel is already "Page 6" and a page prefix is noise.
-  var titleText=(ctx.cvs.length>1?'Page '+(ctx.idx+1)+' — ':'')+(ctx.mLabel||pLabel||'IIIF document');
+  // Line 1: page BEFORE title — long titles ellipsize at the end, so
+  // trailing page numbers were getting cut off. Prefer the canvas label
+  // (the institution's real page designation: "Page 33", "1v", "Cover" —
+  // canvas index is offset from it by cover/title pages), falling back to
+  // the index. Bare-numeric labels get a "Page " prefix; labels with words
+  // ("Page 33", "1v") are used verbatim. Single-canvas manifests skip the
+  // page part: CONTENTdm serves per-page manifests for child-page URLs,
+  // where mLabel is already "Page 6" and a page prefix is noise.
+  var pageText='';
+  if(ctx.cvs.length>1){
+    var pl=(ctx.cLabel||'').trim();
+    if(!pl) pageText='Page '+(ctx.idx+1);
+    else if(/^\d+$/.test(pl)) pageText='Page '+pl;
+    else pageText=pl;
+  }
+  var titleText=(pageText?pageText+' — ':'')+(ctx.mLabel||pLabel||'IIIF document');
   $('eaTitle').textContent=titleText;
   $('eaTitle').title=titleText;
   // Line 2: institution attribution. Statement first; append the provider
