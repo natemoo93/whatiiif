@@ -114,8 +114,12 @@ body.is-embed .masthead,body.is-embed footer{display:none}
 body.is-embed main{max-width:none;padding:0}
 #embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
 #embedOsd{flex:1;min-height:0}
-.embed-caption{display:none;text-align:center;font-family:var(--serif);font-size:1.05rem;font-weight:300;padding:.55rem .75rem .4rem;background:var(--paper);border-top:1px solid var(--rule);color:var(--ink)}
-.embed-attr{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;background:var(--paper);border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
+/* Caption and attribution heights are FIXED — the embed snippet's
+   padding-top calc() adds exactly these pixel amounts on top of the crop's
+   aspect ratio, so the OSD area keeps the region's proportions. Keep the
+   44px/46px constants in sync with buildEmbedSnippet(). */
+.embed-caption{display:none;height:44px;line-height:43px;text-align:center;font-family:var(--serif);font-size:1.05rem;font-weight:300;padding:0 .75rem;background:var(--paper);border-top:1px solid var(--rule);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.embed-attr{display:flex;align-items:center;gap:.75rem;height:46px;overflow:hidden;padding:0 .75rem;background:var(--paper);border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
 .embed-attr img{height:18px;width:auto;flex-shrink:0}
 .embed-attr .ea-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
 .embed-attr .ea-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
@@ -1242,7 +1246,14 @@ function buildEmbedSnippet(){
     var pts=pXywh.split(',').map(Number);
     if(pts.length===4&&pts[2]>0&&pts[3]>0){ w=pts[2];h=pts[3]; }
   } else if(hlCtx&&hlCtx.cW&&hlCtx.cH){ w=hlCtx.cW;h=hlCtx.cH; }
-  return '<div style="position:relative;width:100%;max-width:640px;aspect-ratio:'+w+' / '+h+'">'+
+  // padding-top = crop ratio (width-relative %) + the embed's fixed chrome
+  // height in px (46px attribution bar, +44px caption when a label exists —
+  // keep in sync with .embed-attr/.embed-caption heights). This keeps the
+  // viewer area at exactly the region's proportions at any width, so the
+  // fit never widens to reveal content beside the crop.
+  var chrome=46+(pLabel?44:0);
+  var pct=(h/w*100).toFixed(2);
+  return '<div style="position:relative;width:100%;max-width:640px;padding-top:calc('+pct+'% + '+chrome+'px)">'+
     '<iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" loading="lazy" '+
     'style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"></iframe></div>';
 }
