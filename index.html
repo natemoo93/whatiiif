@@ -1170,37 +1170,34 @@ async function initEmbed(){
 
   if(!ctx.ok){ embedErr(ctx.error||'Could not load this view.'); return; }
 
-  // The embed shows only the crop: clip the tiled image to the xywh region
-  // (image-pixel coords). No highlight overlay — the crop IS the view.
-  var clip=null;
+  // Full page loads (so panning past the crop edges shows the rest of the
+  // document, not black), but the view opens framed on the xywh region.
+  // No highlight overlay — the framing IS the highlight.
+  var region=null;
   if(pXywh){
     var pts=pXywh.split(',').map(Number);
     if(pts.length===4&&pts.every(function(n){return !isNaN(n);})){
-      clip=new OpenSeadragon.Rect(pts[0],pts[1],pts[2],pts[3]);
+      region=new OpenSeadragon.Rect(pts[0],pts[1],pts[2],pts[3]);
     }
   }
   var v=OpenSeadragon({
     id:'embedOsd',
     prefixUrl:'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/images/',
-    tileSources:{
-      tileSource:ctx.svcBase.replace(/\/+$/,'')+'/info.json',
-      clip:clip
-    },
+    tileSources:ctx.svcBase.replace(/\/+$/,'')+'/info.json',
     showNavigator:false,
     gestureSettingsMouse:{clickToZoom:false},
     gestureSettingsTouch:{clickToZoom:false},
   });
   v.addHandler('open-failed',function(){ embedErr('Could not load the image from the source institution.'); });
-  // Fit the crop on open AND on every container resize: when the host page
-  // (Canvas etc.) resizes the iframe, the crop rescales to fill the new box
-  // instead of the viewport widening to reveal more of the page. The clip
-  // already guarantees nothing outside the region can ever render.
-  var fitClip=function(){
-    if(!clip) return;
-    v.viewport.fitBounds(v.viewport.imageToViewportRectangle(clip),true);
+  // Frame the region on open AND on every container resize: when the host
+  // page (Canvas etc.) resizes the iframe, the region rescales to fill the
+  // new box instead of the viewport widening to reveal more of the page.
+  var fitRegion=function(){
+    if(!region) return;
+    v.viewport.fitBounds(v.viewport.imageToViewportRectangle(region),true);
   };
-  v.addHandler('open',fitClip);
-  v.addHandler('resize',function(){ setTimeout(fitClip,0); });
+  v.addHandler('open',fitRegion);
+  v.addHandler('resize',function(){ setTimeout(fitRegion,0); });
 }
 
 /* ══ EMBED SNIPPET (highlight page "Embed iframe" row) ══ */
