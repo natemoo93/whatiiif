@@ -112,6 +112,8 @@ body.is-embed .masthead,body.is-embed footer{display:none}
 body.is-embed main{max-width:none;padding:0}
 #embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
 #embedOsd{flex:1;min-height:0}
+#embedRecenter{display:none;position:absolute;top:.5rem;right:.5rem;z-index:10;font-family:var(--sans);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.3rem .6rem;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.45);color:#eee;cursor:pointer}
+#embedRecenter:hover{background:rgba(0,0,0,.75)}
 /* Caption and attribution heights are FIXED — the embed snippet's
    padding-top calc() adds exactly these pixel amounts on top of the crop's
    aspect ratio, so the OSD area keeps the region's proportions. Keep the
@@ -282,7 +284,13 @@ footer a:hover{color:var(--ink)}
         <div class="url-box" id="hlShareUrl"></div>
         <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
       </div>
-      <p class="share-label" style="margin-top:.75rem">Embed iframe</p>
+      <p class="share-label" style="margin-top:.75rem">Embed iframe
+        <span style="margin-left:.6rem">
+          <button class="ratio-btn emb-size" onclick="setEmbedSize(480,this)">Small</button>
+          <button class="ratio-btn emb-size is-active" onclick="setEmbedSize(640,this)">Medium</button>
+          <button class="ratio-btn emb-size" onclick="setEmbedSize(800,this)">Large</button>
+        </span>
+      </p>
       <div class="url-row">
         <div class="url-box" id="hlEmbedCode" style="font-size:.7rem"></div>
         <button class="copy-btn" id="hlEmbedCopyBtn" onclick="copyHlEmbed()">Copy</button>
@@ -297,6 +305,7 @@ footer a:hover{color:var(--ink)}
 
   <!-- EMBED MODE (/embed — rendered inside third-party iframes) -->
   <div id="embedMode">
+    <button id="embedRecenter" type="button">Recenter</button>
     <div id="embedOsd"></div>
     <div class="embed-caption" id="eaCaption"></div>
     <div class="embed-attr">
@@ -1333,6 +1342,12 @@ async function initEmbed(){
   };
   v.addHandler('open',fitRegion);
   v.addHandler('resize',function(){ setTimeout(fitRegion,0); });
+  if(region){
+    var rc=$('embedRecenter');
+    rc.style.display='block';
+    // Animated (non-immediate) fit back to the original crop region
+    rc.onclick=function(){ v.viewport.fitBounds(v.viewport.imageToViewportRectangle(region)); };
+  }
 }
 
 /* ══ EMBED SNIPPET (highlight page "Embed iframe" row) ══ */
@@ -1358,17 +1373,25 @@ function buildEmbedSnippet(){
     var pts=pXywh.split(',').map(Number);
     if(pts.length===4&&pts[2]>0&&pts[3]>0){ w=pts[2];h=pts[3]; }
   } else if(hlCtx&&hlCtx.cW&&hlCtx.cH){ w=hlCtx.cW;h=hlCtx.cH; }
-  // Fixed-size iframe: viewer area is exactly the crop's proportions at
-  // 640px wide, plus the embed's fixed chrome (46px attribution bar, +44px
-  // caption when a label exists — keep in sync with .embed-attr/
+  // Fixed-size iframe: viewer area is exactly the crop's proportions at the
+  // selected width, plus the embed's fixed chrome (46px attribution bar,
+  // +44px caption when a label exists — keep in sync with .embed-attr/
   // .embed-caption heights). Plain width/height attributes survive LMS
   // sanitizers that strip wrappers and calc() styles.
-  var iw=640;
+  var iw=embedSnippetWidth;
   var ih=Math.round(iw*h/w)+46+(pLabel?44:0);
   return '<iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" '+
     'width="'+iw+'" height="'+ih+'" loading="lazy" style="border:0"></iframe>';
 }
 window.copyHlEmbed=function(){ copyText($('hlEmbedCode').textContent,'hlEmbedCopyBtn'); };
+
+var embedSnippetWidth=640; // Small 480 / Medium 640 (default) / Large 800
+window.setEmbedSize=function(w,btn){
+  embedSnippetWidth=w;
+  document.querySelectorAll('.emb-size').forEach(function(b){b.classList.remove('is-active');});
+  if(btn) btn.classList.add('is-active');
+  if($('hlEmbedCode').textContent) $('hlEmbedCode').textContent=buildEmbedSnippet();
+};
 
 /* ══ VIEWER MODE ══ */
 async function loadManifest(url,jumpTo){
