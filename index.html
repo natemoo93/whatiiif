@@ -1443,7 +1443,17 @@ async function loadManifest(url,jumpTo){
   if(!canvases.length){ showErr('No canvases found in manifest.'); return false; }
   hide('stateMsg');
   buildSelect();
-  gotoPage(typeof jumpTo==='number'?jumpTo:0);
+  var jump=typeof jumpTo==='number'?jumpTo:0;
+  // Content State canvas URI → index, mirroring resolveHighlightContext —
+  // without this, a canvas-target ?iiif-content= link opens viewer mode on
+  // page 1. One-shot: cleared after use so a manifest pasted later in the
+  // same session doesn't inherit the boot-time canvas.
+  if(pContentStateCanvasId){
+    var csIdx=canvases.findIndex(function(c){return (c['@id']||c.id)===pContentStateCanvasId;});
+    if(csIdx>-1) jump=csIdx;
+    pContentStateCanvasId=null;
+  }
+  gotoPage(jump);
   return true;
 }
 
@@ -1453,7 +1463,9 @@ function isIAManifest(url) {
   return /iiif\.archive\.org/.test(url);
 }
 
-async function fetchManifest(url) {
+/* quiet: suppress /log-error reporting — used by heuristicResolve probes,
+   where failed guesses are expected and would drown real errors in noise */
+async function fetchManifest(url, quiet) {
   var isIA = isIAManifest(url);
 
   async function doFetch(fetchUrl) {
@@ -1492,7 +1504,7 @@ async function fetchManifest(url) {
       var data = await doFetch(url);
       return { ok: true, data: data };
     } catch(e) {
-      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
+      if (!quiet) try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
       return { ok: false, error: e.isTimeout ? iaTimeoutMessage() : e.message, isTimeout: !!e.isTimeout };
     }
   }
@@ -1504,14 +1516,14 @@ async function fetchManifest(url) {
   } catch(e) {
     // 403 — proxy will also fail on access-denied, skip it
     if (e.status === 403) {
-      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
+      if (!quiet) try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
       return { ok: false, error: 'Access denied (403). This institution restricts direct access to their manifests. Try pasting the manifest URL directly.' };
     }
     // LoC blocks Cloudflare Worker IPs, so the proxy fallback always 403s —
     // skip it. Direct browser failure here usually means the user's network
     // strips the Referer header, which LoC's WAF requires (verified 2026-07-09).
     if (/\bloc\.gov\//.test(url)) {
-      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
+      if (!quiet) try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e.message)); } catch(x) {}
       return { ok: false, error: 'Could not reach the Library of Congress from your browser. Their server may be blocking requests from your network — the item is still viewable at loc.gov directly.' };
     }
     // Fall back to Worker manifest proxy (even on timeout — proxy may succeed)
@@ -1520,7 +1532,7 @@ async function fetchManifest(url) {
       var data2 = await doFetch(proxyUrl);
       return { ok: true, data: data2 };
     } catch(e2) {
-      try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e2.message)); } catch(x) {}
+      if (!quiet) try { fetch('/log-error?url=' + encodeURIComponent(url) + '&reason=' + encodeURIComponent(e2.message)); } catch(x) {}
       // Only show IA-specific message if this is actually an IA-hosted manifest
       var isIAUrl = isIAManifest(url);
       var timedOut = e.isTimeout || e2.isTimeout;
@@ -1531,10 +1543,17 @@ async function fetchManifest(url) {
 }
 /* ── heuristic fallback resolution ──
    Tried only when no PLATFORMS pattern matches a pasted URL. Reads the page
-   through the existing /manifest-proxy and tries suffix guesses; every
-   candidate must validate as a real IIIF manifest before being accepted.
+   (direct browser fetch first — some WAFs block the Worker's datacenter IPs —
+   then via /manifest-proxy) and scans it for manifest candidates: HTML
+   Signposting <link> tags, ?manifest= / ?iiif-content= viewer links,
+   viewer-config JSON keys, embed data attributes, and any bare URL mentioning
+   "manifest"; then platform tells and suffix guesses. Every candidate must validate as a
+   real IIIF manifest before being accepted, so the matchers can afford to be
+   generous — HEURISTIC_PROBE_CAP bounds the network cost instead.
    Header-based Signposting is NOT checked: /manifest-proxy builds a fresh
    response and drops the Link header — that needs a Worker change. */
+var HEURISTIC_PROBE_CAP=8;
+
 function looksLikeManifest(data){
   if(!data||typeof data!=='object') return false;
   if(/iiif\.io\/api\/presentation/.test(JSON.stringify(data['@context']||''))) return true;
@@ -1542,43 +1561,122 @@ function looksLikeManifest(data){
   return type==='sc:Manifest'||type==='Manifest'||type==='sc:Collection'||type==='Collection';
 }
 
+/* Resolve a scanned candidate (absolute, relative, or HTML-escaped) against
+   the page URL; keep only http(s) URLs that aren't Image API info.json. */
+function pushCandidate(list,raw,baseUrl){
+  if(!raw) return;
+  try{
+    var u=new URL(raw.replace(/&amp;/g,'&'),baseUrl);
+    if((u.protocol==='http:'||u.protocol==='https:')&&!/\/info\.json$/.test(u.pathname)) list.push(u.href);
+  }catch(e){}
+}
+
 async function heuristicResolve(pageUrl){
   var base=pageUrl.replace(/[?#].*$/,'').replace(/\/+$/,'');
+  // Trailing id-ish segment of the pasted URL — used for derived guesses and
+  // for ranking candidates before probing (see below)
+  var idSeg=(base.match(/([A-Za-z0-9._%-]{4,})$/)||[])[1];
   var candidates=[];
-  // 1. Read the page itself (via proxy — institution pages are rarely CORS-open)
+  var m;
+  // 1. Read the page itself — direct fetch first (works when the page is
+  //    CORS-open, and dodges the WAFs that block datacenter egress IPs:
+  //    loc.gov 403s, Harvard 429s, DPUL Turnstiles the proxy), then proxy.
+  // Relative candidates resolve against the page's final (post-redirect) URL
+  // when we have it; the proxy path only knows the URL we asked for.
+  var html=null,resolveBase=pageUrl;
   try{
-    var r=await fetch('/manifest-proxy?url='+encodeURIComponent(pageUrl));
-    if(r.ok){
-      var html=await r.text();
-      // Embedded viewer link: ?manifest=<url> (UV / Mirador / Figgy pattern)
-      var m=html.match(/[?&]manifest=([^&"'<>\s]+)/);
-      if(m){
-        try{
-          var dec=decodeURIComponent(m[1]);
-          if(/^https?:\/\//.test(dec)) candidates.push(dec);
-        }catch(e){}
-      }
-      // Any absolute URL ending in /manifest or /manifest.json (link tags,
-      // meta tags, viewer configs — this is how Stanford PURL resolves)
-      var lm=html.match(/https?:\/\/[^"'<>\s]+\/manifest(?:\.json)?(?=["'<>\s])/);
-      if(lm) candidates.push(lm[0]);
-      // JSON config blobs: "manifestUrl": "...", "manifest_uri": "...", etc.
-      var jm=html.match(/["']manifest[_-]?(?:url|uri)["']\s*:\s*["'](https?:[^"']+)["']/i);
-      if(jm) candidates.push(jm[1]);
-    }
+    var rd=await fetch(pageUrl);
+    if(rd.ok){ html=await rd.text(); if(rd.url) resolveBase=rd.url; }
   }catch(e){}
+  if(html===null){
+    try{
+      var rp=await fetch(PROXY_BASE+'/manifest-proxy?url='+encodeURIComponent(pageUrl));
+      if(rp.ok) html=await rp.text();
+    }catch(e){}
+  }
+  if(html){
+    // Viewer configs embed JSON with escaped slashes (https:\/\/…) — scan a
+    // normalized copy so those URLs match too.
+    var hay=html.replace(/\\\//g,'/');
+    // HTML Signposting: <link rel="alternate|describedby" type="application/
+    // (ld+)json" href=…> — the Link *header* flavor needs a Worker change,
+    // but the markup flavor survives the proxy fine.
+    var linkRe=/<link\b[^>]*>/gi;
+    while((m=linkRe.exec(hay))){
+      var tag=m[0];
+      if(!/rel=["'][^"']*\b(?:alternate|describedby)\b/i.test(tag)) continue;
+      // json must end there (or take ;params) — application/json+oembed links
+      // are on practically every WordPress page and would burn a probe each
+      if(!/type=["']application\/(?:ld\+)?json\s*(?:;|["'])/i.test(tag)) continue;
+      var h=tag.match(/href=["']([^"']+)["']/i);
+      if(h) pushCandidate(candidates,h[1],resolveBase);
+    }
+    // Embedded viewer links: ?manifest=<url> (UV / Mirador / Figgy pattern)
+    var qRe=/[?&](?:amp;)?manifest=([^&"'<>\s]+)/g;
+    while((m=qRe.exec(hay))){
+      var dec=m[1];
+      try{ dec=decodeURIComponent(dec); }catch(e){}
+      pushCandidate(candidates,dec,resolveBase);
+    }
+    // Content-state links: ?iiif-content=<uri-or-token> — reuse the app's
+    // Content State parser to pull the manifest id out.
+    var csRe=/[?&](?:amp;)?iiif-content=([^&"'<>\s]+)/g;
+    while((m=csRe.exec(hay))){
+      var tok=m[1];
+      try{ tok=decodeURIComponent(tok); }catch(e){}
+      var cs=parseContentState(tok);
+      if(cs&&cs.manifestId) pushCandidate(candidates,cs.manifestId,resolveBase);
+    }
+    // Viewer-config JSON keys: "manifestUrl" / "manifest_uri" / "manifestId"
+    // (Mirador 3) / "iiifManifest" / bare "manifest" — value must contain a
+    // slash so "manifest": "true"-style flags don't become probes.
+    var keyRe=/["'](?:iiif[_-]?manifest|manifest[_-]?(?:url|uri|id)?)["']\s*:\s*["']([^"']*\/[^"']*)["']/gi;
+    while((m=keyRe.exec(hay))) pushCandidate(candidates,m[1],resolveBase);
+    // Embed-widget data attributes: data-manifest(-url), data-iiif-manifest,
+    // data-uri (Universal Viewer's embed attribute)
+    var attrRe=/data-(?:iiif-)?(?:manifest(?:-url)?|uri)=["']([^"']*\/[^"']*)["']/gi;
+    while((m=attrRe.exec(hay))) pushCandidate(candidates,m[1],resolveBase);
+    // Any absolute URL mentioning "manifest" (link/meta tags, viewer configs —
+    // this is how Stanford PURL resolves; also catches Bodleian-style
+    // /iiif/manifest/{uuid}.json that the suffix rules miss)
+    var urlRe=/https?:\/\/[^"'<>\s\\]*manifest[^"'<>\s\\]*/gi;
+    while((m=urlRe.exec(hay))) pushCandidate(candidates,m[0],resolveBase);
+    // Platform tell: TIND (Berkeley digicoll, CERN…) builds its manifest link
+    // in JS by concatenation, but the fixed route fragment sits in the markup
+    // (verified live: digicoll.lib.berkeley.edu 2026-07-12)
+    if(/\/export\/iiif_manifest/.test(hay)) candidates.push(base+'/export/iiif_manifest');
+    // Pages often embed Image API thumbnails (https://host/iiif/image/{uuid}/…)
+    // without ever linking the manifest; on Digirati-style hosting the manifest
+    // lives on that same host at /iiif/manifest/{page-id}.json (verified live:
+    // digital.bodleian.ox.ac.uk 2026-07-12)
+    var im=hay.match(/(https?:\/\/[^"'<>\s\\\/]+)\/iiif\/image\//i);
+    if(im&&idSeg) candidates.push(im[1]+'/iiif/manifest/'+idSeg+'.json');
+  }
   // 2. Blind suffix guesses off the pasted URL
   candidates.push(base+'/manifest.json');
   candidates.push(base+'/manifest');
   candidates.push(base+'/iiif/manifest');
-  // Validate in order; first real manifest wins
-  var seen={};
+  // Validation only proves a candidate IS a manifest, not that it's the RIGHT
+  // one — a "related items" rail can link a perfectly valid manifest for a
+  // different object. Probe candidates sharing the pasted URL's trailing
+  // (id-ish) segment first.
+  if(idSeg){
+    var pref=[],rest=[];
+    candidates.forEach(function(c){ (c.indexOf(idSeg)!==-1?pref:rest).push(c); });
+    candidates=pref.concat(rest);
+  }
+  // Validate in order; first real manifest wins. Probes are quiet (no
+  // /log-error — failed guesses are expected) and capped: a burst of 404s
+  // against an institution is exactly the traffic WAFs rate-limit on, and
+  // each miss can cost two fetches (direct + proxy fallback).
+  var seen={},probed=0;
   for(var i=0;i<candidates.length;i++){
     var c=candidates[i];
     if(!c||seen[c]) continue;
     seen[c]=true;
+    if(++probed>HEURISTIC_PROBE_CAP) break;
     try{
-      var result=await fetchManifest(c);
+      var result=await fetchManifest(c,true);
       if(result.ok&&looksLikeManifest(result.data)) return c;
     }catch(e){}
   }
