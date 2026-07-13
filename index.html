@@ -929,13 +929,6 @@ if(isEmbedMode){
   show('viewerMode');
   $('urlInput').value=pManifest;
   resolvedManifestUrl=pManifest;
-  // Show a welcoming prompt above the viewer
-  var hint=document.createElement('div');
-  hint.id='sniffHint';
-  hint.style.cssText='background:var(--accent-bg);border:1px solid var(--accent-light);padding:.75rem 1rem;margin-bottom:1rem;font-size:.82rem;color:var(--ink-mid);line-height:1.6;';
-  hint.innerHTML='<strong style="color:var(--accent)">Manifest loaded.</strong> Navigate to the page you want, then drag a box over the region you\'d like to highlight. A shareable link will appear below your selection.';
-  var viewerEl=$('viewerMode');
-  viewerEl.insertBefore(hint, viewerEl.firstChild);
   loadManifest(pManifest, pCanvas);
 } else {
   show('viewerMode');
