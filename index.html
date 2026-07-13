@@ -9,11 +9,14 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* Dark by design — the light palette this inverted lives in git history */
 :root{
-  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
-  --paper:#f7f4ef;--paper-warm:#ede9e2;--rule:#ccc8c0;
-  --accent:#7a3b1e;--accent-light:#c4886a;--accent-bg:#f5ede8;
+  --ink:#e9e4da;--ink-mid:#b8b1a5;--ink-faint:#847d73;
+  --paper:#191712;--paper-warm:#221f19;--rule:#3b372f;
+  --accent:#c98757;--accent-light:#8a5a3a;--accent-bg:#26201a;
+  --ok:#6fae7f;
   --serif:'Spectral',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
+  color-scheme:dark;
 }
 html{background:var(--paper);color:var(--ink);font-family:var(--sans)}
 body{min-height:100vh;display:flex;flex-direction:column}
@@ -43,7 +46,7 @@ main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
 .input-hint{font-size:.7rem;color:var(--ink-faint);margin-bottom:1.25rem;line-height:1.5}
 .input-hint a{color:var(--accent);text-decoration:none}
 .detected-platform{font-size:.72rem;color:var(--ink-faint);margin-top:.3rem;min-height:1rem;font-style:italic}
-.detected-platform.is-found{color:#3a7a4a;font-style:normal;font-weight:500}
+.detected-platform.is-found{color:var(--ok);font-style:normal;font-weight:500}
 .page-nav{display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;flex-wrap:wrap}
 .page-nav select{font-size:.78rem;padding:.4rem .6rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);cursor:pointer}
 .pg-label{font-size:.78rem;color:var(--ink-faint)}
@@ -86,7 +89,7 @@ details[open] .refine-summary::after{content:' ↑'}
 .url-box{flex:1;min-width:0;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .copy-btn{font-size:.68rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:0 .85rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;flex-shrink:0;transition:all .12s}
 .copy-btn:hover{border-color:var(--ink);color:var(--ink)}
-.copy-btn.is-copied{border-color:#3a7a4a;color:#3a7a4a}
+.copy-btn.is-copied{border-color:var(--ok);color:var(--ok)}
 
 /* highlight mode */
 #highlightMode{display:none}
@@ -108,6 +111,16 @@ details[open] .refine-summary::after{content:' ↑'}
 .share-bar{margin-top:1.75rem;border-top:1px solid var(--rule);padding-top:1.1rem}
 .share-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.4rem}
 /* embed mode (/embed — framable, chromeless view) */
+/* Embeds stay light: they sit inside other sites' pages, and the original
+   archival-paper caption/attribution bars read as neutral there — whatiiif's
+   own dark chrome shouldn't leak into hosts' layouts */
+body.is-embed{
+  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
+  --paper:#f7f4ef;--paper-warm:#ede9e2;--rule:#ccc8c0;
+  --accent:#7a3b1e;--accent-light:#c4886a;--accent-bg:#f5ede8;
+  --ok:#3a7a4a;
+  color-scheme:light;
+}
 body.is-embed .masthead,body.is-embed footer{display:none}
 body.is-embed main{max-width:none;padding:0}
 #embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
