@@ -4,3 +4,6 @@ Allow: /
 Disallow: /proxy
 Disallow: /manifest-proxy
 Disallow: /log-error
+Disallow: /embed
+
+Sitemap: https://whatiiif.com/sitemap.xml
