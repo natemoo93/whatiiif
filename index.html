@@ -705,6 +705,20 @@ var PLATFORMS=[
         return manifestUrl;
       }catch(e){ return null; }
     }
+  },
+
+  // Northwestern University Libraries Digital Collections (NULDC). The work
+  // ID is taken from the direct link to the item page and used to construct 
+  // the IIIF manifest URL from the NULDC API. The manifest and image 
+  // service are CORS-open (ACAO *), so no proxy is needed.
+  {
+    name:'Northwestern University Libraries Digital Collections',
+    pattern:/dc\.library\.northwestern\.edu\/items\/([^\/\?#]+)/,
+    toManifest:function(url){
+      var m=url.match(/dc\.library\.northwestern\.edu\/items\/([^\/\?#]+)/);
+      if(!m) return null;
+      return 'https://api.dc.library.northwestern.edu/api/v2/works/'+m[1]+'?as=iiif';
+    }
   }
 ];
 
