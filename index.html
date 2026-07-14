@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,16 +7,29 @@
 <title>Whatiiif</title>
 <meta name="description" content="Create shareable deep links to highlighted regions in digitized primary sources. Works with Library of Congress, Yale, Internet Archive, Smithsonian, and more.">
 <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
+<script>
+/* Apply saved night mode before first paint so there's no light flash */
+try{ if(localStorage.getItem('whatiiif-night')==='1') document.documentElement.classList.add('night'); }catch(e){}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-/* Dark by design — the light palette this inverted lives in git history */
+/* Light by default (pure-white paper, per UCLA); the dark palette lives
+   behind html.night — toggled from the masthead, persisted in localStorage
+   (see the head script that applies it before first paint) */
 :root{
+  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
+  --paper:#ffffff;--paper-warm:#ede9e2;--rule:#ccc8c0;
+  --accent:#7a3b1e;--accent-light:#c4886a;--accent-bg:#f5ede8;
+  --ok:#3a7a4a;
+  --serif:'Spectral',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html.night{
   --ink:#e9e4da;--ink-mid:#b8b1a5;--ink-faint:#847d73;
   --paper:#191712;--paper-warm:#221f19;--rule:#3b372f;
   --accent:#c98757;--accent-light:#8a5a3a;--accent-bg:#26201a;
   --ok:#6fae7f;
-  --serif:'Spectral',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
   color-scheme:dark;
 }
 html{background:var(--paper);color:var(--ink);font-family:var(--sans)}
@@ -26,6 +40,7 @@ body{min-height:100vh;display:flex;flex-direction:column}
 .masthead-sub{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
 .masthead-nav{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:none;padding:.25rem .6rem;border:1px solid var(--ink);transition:background .12s,color .12s}
 .masthead-nav:hover{background:var(--ink);color:var(--paper)}
+button.masthead-nav{background:transparent;cursor:pointer;font-family:var(--sans)}
 main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
 .state{font-family:var(--serif);font-size:1.05rem;font-weight:300;font-style:italic;color:var(--ink-mid);padding:3rem 0;text-align:center}
 .state.is-err{color:var(--accent);font-style:normal;font-size:.9rem;line-height:1.6}
@@ -111,9 +126,10 @@ details[open] .refine-summary::after{content:' ↑'}
 .share-bar{margin-top:1.75rem;border-top:1px solid var(--rule);padding-top:1.1rem}
 .share-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.4rem}
 /* embed mode (/embed — framable, chromeless view) */
-/* Embeds stay light: they sit inside other sites' pages, and the original
-   archival-paper caption/attribution bars read as neutral there — whatiiif's
-   own dark chrome shouldn't leak into hosts' layouts */
+/* Embeds stay light regardless of the night toggle: they sit inside other
+   sites' pages and whatiiif's own chrome shouldn't leak into hosts' layouts.
+   (These body-level vars override html.night's for everything in the embed.)
+   The attribution bar is pure white (not var(--paper)) per UCLA. */
 body.is-embed{
   --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
   --paper:#f7f4ef;--paper-warm:#ede9e2;--rule:#ccc8c0;
@@ -134,7 +150,7 @@ body.is-embed main{max-width:none;padding:0}
    aspect ratio, so the OSD area keeps the region's proportions. Keep the
    44px/46px constants in sync with buildEmbedSnippet(). */
 .embed-caption{display:none;height:44px;line-height:43px;text-align:center;font-family:var(--serif);font-size:1.05rem;font-weight:300;padding:0 .75rem;background:var(--paper);border-top:1px solid var(--rule);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.embed-attr{display:flex;align-items:center;gap:.75rem;height:46px;overflow:hidden;padding:0 .75rem;background:var(--paper);border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
+.embed-attr{display:flex;align-items:center;gap:.75rem;height:46px;overflow:hidden;padding:0 .75rem;background:#fff;border-top:1px solid var(--rule);font-size:.68rem;color:var(--ink-mid);line-height:1.35}
 .embed-attr img{height:18px;width:auto;flex-shrink:0}
 .embed-attr .ea-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
 .embed-attr .ea-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
@@ -154,7 +170,24 @@ footer a:hover{color:var(--ink)}
   <hr class="masthead-rule" aria-hidden="true">
   <span class="masthead-sub">Presentation API 2 &amp; 3</span>
   <a class="masthead-nav" href="/contact.html">Contact</a>
+  <button class="masthead-nav" id="nightToggle" type="button" aria-pressed="false">Night</button>
 </header>
+<script>
+(function(){
+  var btn=document.getElementById('nightToggle');
+  function sync(){
+    var on=document.documentElement.classList.contains('night');
+    btn.textContent=on?'Day':'Night';
+    btn.setAttribute('aria-pressed',on?'true':'false');
+  }
+  btn.addEventListener('click',function(){
+    document.documentElement.classList.toggle('night');
+    try{ localStorage.setItem('whatiiif-night',document.documentElement.classList.contains('night')?'1':'0'); }catch(e){}
+    sync();
+  });
+  sync();
+})();
+</script>
 <main>
   <div id="stateMsg" class="state" style="display:none"></div>
 
