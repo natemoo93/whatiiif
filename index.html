@@ -1220,7 +1220,7 @@ async function initHighlight(){
   if(canvasId && pManifest){
     var csBody=buildContentStateAnnotation(pManifest,canvasId,pXywh,pLabel);
     var csEncoded=encodeContentState(csBody);
-    $('hlContentStateUrl').textContent=location.origin+location.pathname+'?iiif-content='+csEncoded;
+    $('hlContentStateUrl').textContent=csEncoded;
     $('hlTheseusLink').href='https://theseusviewer.org/?iiif-content='+csEncoded;
     $('hlTheseusLink').style.display='';
   } else {
