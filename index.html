@@ -12,16 +12,11 @@ try{ if(localStorage.getItem('whatiiif-night')==='1') document.documentElement.c
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&amp;family=Inter:wght@300;400;500&amp;display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&amp;family=Inter:wght@300;400;500&amp;display=swap"></noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&amp;family=Inter:wght@300;400;500&amp;display=swap">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 ::placeholder{color:var(--ink-faint);opacity:1}
-.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
-.skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:var(--accent);color:#fff;padding:.5rem 1rem;font-size:.8rem;text-decoration:none}
-.skip-link:focus{left:0}
-.input-label{display:block;font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.35rem}
 /* Light by default (pure-white paper, per UCLA); the dark palette lives
    behind html.night — toggled from the masthead, persisted in localStorage
    (see the head script that applies it before first paint) */
@@ -109,7 +104,7 @@ details[open] .refine-summary::after{content:' ↑'}
 .label-row input:focus{border-color:var(--accent-light)}
 .url-block .ub-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.35rem}
 .url-row{display:flex;gap:.4rem}
-.url-box{flex:1;min-width:0;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule-ui);background:var(--paper-warm);color:var(--ink-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.url-box{flex:1;min-width:0;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .copy-btn{font-size:.68rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:0 .85rem;min-height:24px;border:1px solid var(--rule-ui);background:transparent;color:var(--ink-faint);cursor:pointer;flex-shrink:0;transition:all .12s}
 .copy-btn:hover{border-color:var(--ink);color:var(--ink)}
 .copy-btn.is-copied{border-color:var(--ok);color:var(--ok)}
@@ -172,13 +167,11 @@ footer a:hover{color:var(--ink)}
 </style>
 </head>
 <body>
-<a href="#main" class="skip-link">Skip to main content</a>
-<div id="srStatus" class="visually-hidden" role="status" aria-live="polite"></div>
 <header class="masthead">
   <span class="masthead-title">IIIF Highlight</span>
   <hr class="masthead-rule" aria-hidden="true">
   <span class="masthead-sub">Presentation API 2 &amp; 3</span>
-  <nav aria-label="Primary"><a class="masthead-nav" href="/contact.html">Contact</a></nav>
+  <a class="masthead-nav" href="/contact.html">Contact</a>
   <button class="masthead-nav" id="nightToggle" type="button" aria-pressed="false">Night</button>
 </header>
 <script>
@@ -197,20 +190,19 @@ footer a:hover{color:var(--ink)}
   sync();
 })();
 </script>
-<main id="main">
+<main>
   <div id="stateMsg" class="state" role="status" aria-live="polite" style="display:none"></div>
 
   <!-- VIEWER MODE -->
-  <section id="viewerMode" aria-labelledby="viewerHeading">
+  <div id="viewerMode">
     <div class="viewer-header">
-      <h1 id="viewerHeading">Select a region to highlight</h1>
+      <h1>Select a region to highlight</h1>
       <p>Paste a page URL from a supported institution, or a direct IIIF manifest URL. Navigate to the right page, then drag a box over the area you want to share.</p>
     </div>
 
-    <label class="input-label" for="urlInput">Page URL or IIIF manifest URL</label>
     <div class="input-row">
-      <input type="url" id="urlInput" placeholder="https://…" oninput="onUrlInput()">
-      <button type="button" class="btn is-accent" onclick="handleLoad()">Load</button>
+      <input type="url" id="urlInput" aria-label="Page URL or manifest URL" placeholder="Page URL or manifest URL…" oninput="onUrlInput()">
+      <button class="btn is-accent" onclick="handleLoad()">Load</button>
     </div>
     <div class="detected-platform" id="detectedPlatform" role="status" aria-live="polite"></div>
     <details class="refine-details" style="margin-bottom:.5rem">
@@ -226,18 +218,18 @@ footer a:hover{color:var(--ink)}
 · <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">La végétation sous-marine (Yale)</a>
   </p>
  <div class="page-nav" id="pageNav" style="display:none">
-      <button type="button" class="btn" aria-label="Previous page" onclick="goPage(-1)">&#8592;</button>
+      <button class="btn" aria-label="Previous page" onclick="goPage(-1)">&#8592;</button>
       <select id="pageSelect" aria-label="Page" onchange="gotoPage(+this.value)"></select>
-      <button type="button" class="btn" aria-label="Next page" onclick="goPage(1)">&#8594;</button>
+      <button class="btn" aria-label="Next page" onclick="goPage(1)">&#8594;</button>
       <span class="pg-label" id="pgLabel"></span>
     </div>
     <div class="mode-toggle" id="modeToggle" style="display:none">
       <span>Mouse:</span>
-      <button type="button" class="toggle-btn is-active" id="btnSelect" onclick="setMode('select')">&#9633; Select region</button>
-      <button type="button" class="toggle-btn" id="btnPan" onclick="setMode('pan')">&#10021; Pan / zoom</button>
+      <button class="toggle-btn is-active" id="btnSelect" onclick="setMode('select')">&#9633; Select region</button>
+      <button class="toggle-btn" id="btnPan" onclick="setMode('pan')">&#10021; Pan / zoom</button>
     </div>
     <div class="osd-wrap" id="osdWrap" style="display:none">
-      <div id="osdEl" role="region" aria-label="Deep-zoom image viewer"></div>
+      <div id="osdEl"></div>
       <svg id="selSvg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <rect id="selRect" x="0" y="0" width="0" height="0"
           fill="rgba(173,255,47,0.28)" stroke="#65a30d" stroke-width="1.5"
@@ -277,12 +269,12 @@ footer a:hover{color:var(--ink)}
           </div>
           <div class="ratio-row">
             <span class="ratio-label">Constrain to:</span>
-            <button type="button" class="ratio-btn" onclick="applyRatio(null)">Free</button>
-            <button type="button" class="ratio-btn" onclick="applyRatio(9/16)">Phone 9:16</button>
-            <button type="button" class="ratio-btn" onclick="applyRatio(16/9)">Desktop 16:9</button>
-            <button type="button" class="ratio-btn" onclick="applyRatio(1)">Square 1:1</button>
-            <button type="button" class="ratio-btn" onclick="applyRatio(8.5/11)">Letter</button>
-            <button type="button" class="ratio-btn" onclick="applyRatio(1/Math.sqrt(2))">A4</button>
+            <button class="ratio-btn" onclick="applyRatio(null)">Free</button>
+            <button class="ratio-btn" onclick="applyRatio(9/16)">Phone 9:16</button>
+            <button class="ratio-btn" onclick="applyRatio(16/9)">Desktop 16:9</button>
+            <button class="ratio-btn" onclick="applyRatio(1)">Square 1:1</button>
+            <button class="ratio-btn" onclick="applyRatio(8.5/11)">Letter</button>
+            <button class="ratio-btn" onclick="applyRatio(1/Math.sqrt(2))">A4</button>
           </div>
           <div class="refine-res" id="refineRes"></div>
         </div>
@@ -293,22 +285,22 @@ footer a:hover{color:var(--ink)}
         <input type="text" id="labelInput" placeholder="e.g. Geo. Costentenus" oninput="updateUrl()">
       </div>
       <div class="url-block">
-        <p class="ub-label" id="ubLabel">Shareable highlight link</p>
+        <p class="ub-label">Shareable highlight link</p>
         <div class="url-row">
-          <input class="url-box" id="generatedUrl" readonly aria-labelledby="ubLabel">
-          <button type="button" class="copy-btn" id="copyGenBtn" onclick="copyGenUrl()">Copy</button>
+          <div class="url-box" id="generatedUrl"></div>
+          <button class="copy-btn" id="copyGenBtn" aria-live="polite" onclick="copyGenUrl()">Copy</button>
         </div>
       </div>
       <div class="actions" style="margin-top:.85rem">
-        <a class="btn is-accent" id="openHighlightBtn" href="#" target="_blank" rel="noopener">Preview highlight ↗</a>
-        <button type="button" class="btn" id="fullResBtn" style="display:none" onclick="downloadFullResViewer()">Full resolution ↓</button>
-        <button type="button" class="btn" onclick="clearSel()">Clear selection</button>
+        <a class="btn is-accent" id="openHighlightBtn" href="#" target="_blank">Preview highlight ↗</a>
+        <button class="btn" id="fullResBtn" style="display:none" onclick="downloadFullResViewer()">Full resolution ↓</button>
+        <button class="btn" onclick="clearSel()">Clear selection</button>
       </div>
     </div>
-  </section>
+  </div>
 
   <!-- HIGHLIGHT MODE -->
-  <section id="highlightMode" aria-labelledby="hlTitle">
+  <div id="highlightMode">
     <p class="eyebrow" id="hlEyebrow">IIIF Document</p>
     <h1 class="hl-title" id="hlTitle">—</h1>
     <p class="hl-note" id="hlNote"></p>
@@ -331,40 +323,40 @@ footer a:hover{color:var(--ink)}
     </div>
     <div class="meta-block" id="hlMeta"></div>
     <div class="actions">
-      <a class="btn is-accent" id="hlSourceLink" href="#" target="_blank" rel="noopener">View full document ↗</a>
-      <button type="button" class="btn" id="hlFullResBtn" onclick="downloadFullRes()">Full resolution ↓</button>
-      <button type="button" class="btn" onclick="switchToViewer()">Edit this selection</button>
-      <button type="button" class="btn" onclick="startOver()">Start over</button>
+      <a class="btn is-accent" id="hlSourceLink" href="#" target="_blank">View full document ↗</a>
+      <button class="btn" id="hlFullResBtn" onclick="downloadFullRes()">Full resolution ↓</button>
+      <button class="btn" onclick="switchToViewer()">Edit this selection</button>
+      <button class="btn" onclick="startOver()">Start over</button>
     </div>
     <div class="share-bar">
       <p class="share-label">Shareable link</p>
       <div class="url-row">
-        <input class="url-box" id="hlShareUrl" readonly aria-label="Shareable link">
-        <button type="button" class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
+        <div class="url-box" id="hlShareUrl"></div>
+        <button class="copy-btn" id="hlCopyBtn" aria-live="polite" onclick="copyHlUrl()">Copy</button>
       </div>
       <p class="share-label" style="margin-top:.75rem">Embed iframe
         <span style="margin-left:.6rem">
-          <button type="button" class="ratio-btn emb-size" onclick="setEmbedSize(480,this)">Small</button>
-          <button type="button" class="ratio-btn emb-size is-active" onclick="setEmbedSize(640,this)">Medium</button>
-          <button type="button" class="ratio-btn emb-size" onclick="setEmbedSize(800,this)">Large</button>
+          <button class="ratio-btn emb-size" onclick="setEmbedSize(480,this)">Small</button>
+          <button class="ratio-btn emb-size is-active" onclick="setEmbedSize(640,this)">Medium</button>
+          <button class="ratio-btn emb-size" onclick="setEmbedSize(800,this)">Large</button>
         </span>
       </p>
       <div class="url-row">
-        <input class="url-box" id="hlEmbedCode" style="font-size:.7rem" readonly aria-label="Embed iframe code">
-        <button type="button" class="copy-btn" id="hlEmbedCopyBtn" onclick="copyHlEmbed()">Copy</button>
+        <div class="url-box" id="hlEmbedCode" style="font-size:.7rem"></div>
+        <button class="copy-btn" id="hlEmbedCopyBtn" aria-live="polite" onclick="copyHlEmbed()">Copy</button>
       </div>
-      <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" rel="noopener" style="color:inherit">IIIF Content State</a> (paste into any compatible viewer, or <a id="hlTheseusLink" href="#" target="_blank" rel="noopener" style="color:inherit">open in Theseus ↗</a>)</p>
+      <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> (paste into any compatible viewer, or <a id="hlTheseusLink" href="#" target="_blank" style="color:inherit">open in Theseus ↗</a>)</p>
       <div class="url-row">
-        <input class="url-box" id="hlContentStateUrl" style="font-size:.7rem" readonly aria-label="IIIF Content State token">
-        <button type="button" class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
+        <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
+        <button class="copy-btn" id="hlCsCopyBtn" aria-live="polite" onclick="copyHlCsUrl()">Copy</button>
       </div>
     </div>
-  </section>
+  </div>
 
   <!-- EMBED MODE (/embed — rendered inside third-party iframes) -->
   <div id="embedMode">
     <button id="embedRecenter" type="button">Recenter</button>
-    <div id="embedOsd" role="region" aria-label="Deep-zoom view of the highlighted region"></div>
+    <div id="embedOsd"></div>
     <div class="embed-caption" id="eaCaption"></div>
     <div class="embed-attr">
       <img id="eaLogo" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" style="display:none">
@@ -378,8 +370,8 @@ footer a:hover{color:var(--ink)}
   </div>
 </main>
 <footer>
-  <p>IIIF Highlight — works with any Presentation API 2 or 3 source</p>
-  <nav aria-label="Footer">Built by <a href="https://github.com/natemoo93/whatiiif" target="_blank" rel="noopener">Nate Moore</a> &middot; <a href="/contact.html">Contact</a> &middot; <a href="/terms.html">Terms</a> &middot; <a href="https://iiif.io" target="_blank" rel="noopener">iiif.io ↗</a></nav>
+  <span>IIIF Highlight — works with any Presentation API 2 or 3 source</span>
+  <span>Built by <a href="https://github.com/natemoo93/whatiiif" target="_blank">Nate Moore</a> &middot; <a href="/contact.html">Contact</a> &middot; <a href="/terms.html">Terms</a> &middot; <a href="https://iiif.io" target="_blank">iiif.io ↗</a></span>
 </footer>
 
 <script>
@@ -390,9 +382,6 @@ footer a:hover{color:var(--ink)}
 function $(id){ return document.getElementById(id); }
 function show(id,d){ $(id).style.display=d||'block'; }
 function hide(id){ $(id).style.display='none'; }
-/* Screen-reader announcements go through one dedicated visually-hidden live
-   region (#srStatus) — more reliable than aria-live on the changing element */
-function announce(msg){ var el=$('srStatus'); if(el) el.textContent=msg; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* OpenSeadragon is loaded on demand: highlight landing pages render static
@@ -995,21 +984,9 @@ if(isEmbedMode){
   // Chromeless framable viewer — served at /embed by the Worker
   initEmbed();
 } else if(pManifest && pXywh){
-  // Full highlight link — show the highlight view. The svc param names the
-  // institution's image host, so open its connection now, in parallel with
-  // the manifest fetch — the crop/context images (the LCP element) are only
-  // discovered after two upstream fetches, and this shaves DNS+TLS off them.
-  if(pSvc){
-    try{
-      var pc=document.createElement('link');
-      pc.rel='preconnect';
-      pc.href=new URL(pSvc).origin;
-      document.head.appendChild(pc);
-    }catch(e){}
-  }
+  // Full highlight link — show the highlight view
   show('stateMsg');
   $('stateMsg').textContent='Resolving manifest…';
-  $('stateMsg').setAttribute('aria-busy','true');
   initHighlight();
 } else if(pManifest && !pXywh){
   // Manifest only — go straight to viewer
@@ -1235,7 +1212,6 @@ async function initHighlight(){
   if(!ctx.ok){
     if(ctx.errorKind==='fetch'){
       $('stateMsg').className='state is-err';
-      $('stateMsg').setAttribute('aria-busy','false');
       var isWorkerMsg563=ctx.error&&(ctx.error.includes('Internet Archive')||ctx.error.includes('Library of Congress')||ctx.error.includes('source institution')||ctx.error.includes('Manifest not found')||ctx.error.includes('Access denied'));
       $('stateMsg').textContent='Could not load manifest: '+ctx.error+(isWorkerMsg563?'':' The source server may not permit cross-origin requests.');
     } else {
@@ -1255,7 +1231,6 @@ async function initHighlight(){
     }
   }
 
-  $('stateMsg').setAttribute('aria-busy','false');
   hide('stateMsg');
   $('hlEyebrow').textContent=mLabel||'IIIF Document';
   $('hlTitle').textContent=pLabel||cLabel||'Page '+(idx+1);
@@ -1268,32 +1243,9 @@ async function initHighlight(){
   // Never request wider than the region itself: upscaling makes some servers
   // (LoC tile.loc.gov) resample from a low-res pyramid level and return blur.
   var proxy=window.__WHATIIIF_PROXY__||null;
-  // Intrinsic dimensions before src: the width/height attributes give the
-  // browser the aspect ratio, so the panels reserve their final space and
-  // the page doesn't shift when the images arrive (CLS). CSS width:100%
-  // still controls rendered size.
-  $('cropImg').width=rw;$('cropImg').height=rh;
-  $('ctxImg').width=cW;$('ctxImg').height=cH;
-  // srcset lets the browser fetch the smallest sufficient size for the
-  // ~442px panel (or full-width on phones) at its own devicePixelRatio,
-  // instead of always paying for the 800px derivative.
-  function panelSrc(el,reg,maxW,cap){
-    var full=Math.min(cap,maxW);
-    el.src=iiifUrl(svcBase,reg,full+',');
-    var widths=[Math.ceil(cap/2),cap].filter(function(w){return w<=maxW;});
-    if(widths.indexOf(full)===-1) widths.push(full);
-    if(widths.length>1){
-      el.srcset=widths.map(function(w){return iiifUrl(svcBase,reg,w+',')+' '+w+'w';}).join(', ');
-      el.sizes='(max-width:620px) calc(100vw - 4rem), 442px';
-    }
-  }
-  if(proxy){
-    $('cropImg').src=proxy.crop;
-    $('ctxImg').src=proxy.ctx;
-  } else {
-    panelSrc($('cropImg'),pXywh?region:'full',pXywh?rw:cW,800);
-    panelSrc($('ctxImg'),'full',cW,600);
-  }
+  var cropSize=Math.min(800,pXywh?rw:cW)+',';
+  $('cropImg').src=proxy?proxy.crop:iiifUrl(svcBase,pXywh?region:'full',cropSize);
+  $('ctxImg').src=proxy?proxy.ctx:iiifUrl(svcBase,'full','600,');
 
   // hlRect applied after show('highlightMode') below
 
@@ -1302,26 +1254,26 @@ async function initHighlight(){
   if(mLabel) row('Document',esc(mLabel));
   if(cLabel) row('Page',esc(cLabel));
   if(pXywh)  row('Region','x&nbsp;'+rx+' y&nbsp;'+ry+' w&nbsp;'+rw+' h&nbsp;'+rh+' px');
-  row('Manifest','<a href="'+esc(pManifest)+'" target="_blank" rel="noopener">'+esc(pManifest)+'</a> <button type="button" onclick="navigator.clipboard.writeText(\''+esc(pManifest)+'\')" style="font-size:.6rem;padding:.2rem .5rem;min-height:24px;border:1px solid var(--rule-ui);background:transparent;cursor:pointer;color:var(--ink-faint);margin-left:.4rem">Copy</button>');
+  row('Manifest','<a href="'+esc(pManifest)+'" target="_blank">'+esc(pManifest)+'</a> <button onclick="navigator.clipboard.writeText(\''+esc(pManifest)+'\')" style="font-size:.6rem;padding:.2rem .5rem;border:1px solid var(--rule);background:transparent;cursor:pointer;color:var(--ink-faint);margin-left:.4rem">Copy</button>');
   if(pXywh) row('Fragment',esc(canvasId+'#xywh='+pXywh));
 
   // Resolve institutional page URL from canvas or manifest related/homepage fields
   var instUrl=resolveInstitutionUrl(ctx);
   $('hlSourceLink').href=instUrl;
   $('hlSourceLink').textContent='View at institution ↗';
-  $('hlShareUrl').value=location.href;
-  $('hlEmbedCode').value=buildEmbedSnippet();
+  $('hlShareUrl').textContent=location.href;
+  $('hlEmbedCode').textContent=buildEmbedSnippet();
 
   // Generate a companion IIIF Content State (spec 1.0) value — the bare
   // encoded token, ready for any viewer's ?iiif-content= parameter
   if(canvasId && pManifest){
     var csBody=buildContentStateAnnotation(pManifest,canvasId,pXywh,pLabel);
     var csEncoded=encodeContentState(csBody);
-    $('hlContentStateUrl').value=csEncoded;
+    $('hlContentStateUrl').textContent=csEncoded;
     $('hlTheseusLink').href='https://theseusviewer.org/?iiif-content='+csEncoded;
     $('hlTheseusLink').style.display='';
   } else {
-    $('hlContentStateUrl').value='(unavailable — canvas ID could not be resolved)';
+    $('hlContentStateUrl').textContent='(unavailable — canvas ID could not be resolved)';
     $('hlTheseusLink').style.display='none';
   }
 
@@ -1350,7 +1302,6 @@ async function initHighlight(){
 function showErr(msg){
   $('stateMsg').className='state is-err';
   $('stateMsg').textContent=msg;
-  $('stateMsg').setAttribute('aria-busy','false');
   show('stateMsg');
 }
 
@@ -1367,8 +1318,8 @@ window.switchToViewer=function(){
     loadManifest(pManifest,pCanvas);
   }
 };
-window.copyHlUrl=function(){ copyText($('hlShareUrl').value,'hlCopyBtn'); };
-window.copyHlCsUrl=function(){ copyText($('hlContentStateUrl').value,'hlCsCopyBtn'); };
+window.copyHlUrl=function(){ copyText($('hlShareUrl').textContent,'hlCopyBtn'); };
+window.copyHlCsUrl=function(){ copyText($('hlContentStateUrl').textContent,'hlCsCopyBtn'); };
 
 /* ══ EMBED MODE (/embed) ══
    Chromeless, framable viewer for LMS iframes. Tiles load client-side
@@ -1538,21 +1489,20 @@ function buildEmbedSnippet(){
   return '<iframe src="'+esc(url)+'" title="'+esc(embedTitle())+'" '+
     'width="'+iw+'" height="'+ih+'" loading="lazy" style="border:0"></iframe>';
 }
-window.copyHlEmbed=function(){ copyText($('hlEmbedCode').value,'hlEmbedCopyBtn'); };
+window.copyHlEmbed=function(){ copyText($('hlEmbedCode').textContent,'hlEmbedCopyBtn'); };
 
 var embedSnippetWidth=640; // Small 480 / Medium 640 (default) / Large 800
 window.setEmbedSize=function(w,btn){
   embedSnippetWidth=w;
   document.querySelectorAll('.emb-size').forEach(function(b){b.classList.remove('is-active');});
   if(btn) btn.classList.add('is-active');
-  if($('hlEmbedCode').value) $('hlEmbedCode').value=buildEmbedSnippet();
+  if($('hlEmbedCode').textContent) $('hlEmbedCode').textContent=buildEmbedSnippet();
 };
 
 /* ══ VIEWER MODE ══ */
 async function loadManifest(url,jumpTo){
   $('stateMsg').className='state';
   $('stateMsg').textContent='Loading…';
-  $('stateMsg').setAttribute('aria-busy','true');
   show('stateMsg');
   ensureOSD().catch(function(){}); // warm in parallel; loadOSD() awaits the same promise
   var result=await fetchManifest(url);
@@ -1564,7 +1514,6 @@ async function loadManifest(url,jumpTo){
   manifest=result.data;
   canvases=getCanvases(manifest);
   if(!canvases.length){ showErr('No canvases found in manifest.'); return false; }
-  $('stateMsg').setAttribute('aria-busy','false');
   hide('stateMsg');
   buildSelect();
   var jump=typeof jumpTo==='number'?jumpTo:0;
@@ -1858,7 +1807,6 @@ window.gotoPage=function(n){
   currentIdx=n;
   $('pageSelect').value=n;
   $('pgLabel').textContent=(n+1)+' / '+canvases.length;
-  announce('Page '+(n+1)+' of '+canvases.length);
   clearSel();
   loadOSD(canvases[n]);
   // Show panel immediately with page-level link — no selection required
@@ -1882,7 +1830,7 @@ function showPageLink(){
   var mUrl=resolvedManifestUrl||$('urlInput').value.trim();
   var p=new URLSearchParams({manifest:mUrl,canvas:currentIdx});
   var url=location.origin+location.pathname+'?'+p.toString();
-  $('generatedUrl').value=url;
+  $('generatedUrl').textContent=url;
   $('openHighlightBtn').href=url;
   $('openHighlightBtn').textContent='Preview this page ↗';
 }
@@ -2088,7 +2036,7 @@ window.updateUrl=function(){
   var svcBase=getServiceBase(canvas);
   if(svcBase) p.set('svc',svcBase);
   var url=location.origin+location.pathname+'?'+p.toString();
-  $('generatedUrl').value=url;
+  $('generatedUrl').textContent=url;
   $('openHighlightBtn').href=url;
   $('openHighlightBtn').textContent='Preview highlight ↗';
 
@@ -2136,12 +2084,11 @@ window.downloadFullResViewer=function(){
   triggerDownload(url,filename);
 };
 
-window.copyGenUrl=function(){ copyText($('generatedUrl').value,'copyGenBtn'); };
+window.copyGenUrl=function(){ copyText($('generatedUrl').textContent,'copyGenBtn'); };
 
 function copyText(text,btnId){
   navigator.clipboard.writeText(text).then(function(){
     var btn=$(btnId);btn.textContent='Copied';btn.classList.add('is-copied');
-    announce('Copied to clipboard.');
     setTimeout(function(){btn.textContent='Copy';btn.classList.remove('is-copied');},2000);
   });
 }
