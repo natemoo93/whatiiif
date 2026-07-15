@@ -213,7 +213,7 @@ footer a:hover{color:var(--ink)}
   Try it with one of these sample items:
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a> ·
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a>
-· <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">Yale sample item</a>
+· <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">La végétation sous-marine</a>
   </p>
  <div class="page-nav" id="pageNav" style="display:none">
       <button class="btn" aria-label="Previous page" onclick="goPage(-1)">&#8592;</button>
@@ -427,10 +427,7 @@ function iiifUrl(base,region,size){
   return base.replace(/\/+$/,'')+'/'+region+'/'+(size||'800,')+'/0/default.jpg';
 }
 
-/* ══ PLATFORM DETECTION ══
-   Only CONTENTdm and Internet Archive are officially supported.
-   For other institutions paste the manifest URL directly.
-*/
+/* ══ PLATFORM DETECTION ══*/
 var PLATFORMS=[
 
   // Viewer share links (Theseus, Mirador, UV, whatiiif itself) — any URL
@@ -804,7 +801,7 @@ var EXTRA_INSTITUTIONS = [
   var li=document.createElement('li');
   li.style.color='var(--ink-faint)';
   li.style.fontSize='.72rem';
-  li.textContent='✓ Any other CONTENTdm-hosted institution';
+  li.textContent='✓ Any CONTENTdm-hosted institution';
   list.appendChild(li);
   var reqLi=document.createElement('li');
   reqLi.style.marginTop='.4rem';
