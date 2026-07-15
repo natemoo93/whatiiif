@@ -10,8 +10,10 @@
 /* Apply saved night mode before first paint so there's no light flash */
 try{ if(localStorage.getItem('whatiiif-night')==='1') document.documentElement.classList.add('night'); }catch(e){}
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&amp;family=Inter:wght@300;400;500&amp;display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 ::placeholder{color:var(--ink-faint);opacity:1}
@@ -213,7 +215,7 @@ footer a:hover{color:var(--ink)}
   Try it with one of these sample items:
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a> ·
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a>
-· <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">La végétation sous-marine</a>
+· <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">La végétation sous-marine (Yale)</a>
   </p>
  <div class="page-nav" id="pageNav" style="display:none">
       <button class="btn" aria-label="Previous page" onclick="goPage(-1)">&#8592;</button>
@@ -305,7 +307,7 @@ footer a:hover{color:var(--ink)}
     <div class="image-panel">
       <div>
         <p class="panel-label">Selected region</p>
-        <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Highlighted region">
+        <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
       </div>
       <div>
         <p class="panel-label">In context — page <span id="hlPageNum">—</span></p>
@@ -372,7 +374,6 @@ footer a:hover{color:var(--ink)}
   <span>Built by <a href="https://github.com/natemoo93/whatiiif" target="_blank">Nate Moore</a> &middot; <a href="/contact.html">Contact</a> &middot; <a href="/terms.html">Terms</a> &middot; <a href="https://iiif.io" target="_blank">iiif.io ↗</a></span>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/openseadragon.min.js"></script>
 <script>
 (function(){
 'use strict';
@@ -382,6 +383,24 @@ function $(id){ return document.getElementById(id); }
 function show(id,d){ $(id).style.display=d||'block'; }
 function hide(id){ $(id).style.display='none'; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* OpenSeadragon is loaded on demand: highlight landing pages render static
+   <img> crops and never need it, so shipping ~170KB of viewer JS there
+   tanked Lighthouse. Only viewer mode and /embed create an OSD instance. */
+var osdLibPromise=null;
+function ensureOSD(){
+  if(window.OpenSeadragon) return Promise.resolve();
+  if(!osdLibPromise){
+    osdLibPromise=new Promise(function(resolve,reject){
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/openseadragon.min.js';
+      s.onload=function(){ resolve(); };
+      s.onerror=function(){ osdLibPromise=null; reject(new Error('viewer library failed to load')); };
+      document.head.appendChild(s);
+    });
+  }
+  return osdLibPromise;
+}
 
 function getLabel(raw){
   if(!raw) return '';
@@ -801,7 +820,7 @@ var EXTRA_INSTITUTIONS = [
   var li=document.createElement('li');
   li.style.color='var(--ink-faint)';
   li.style.fontSize='.72rem';
-  li.textContent='✓ Any CONTENTdm-hosted institution';
+  li.textContent='✓ CONTENTdm-hosted institution';
   list.appendChild(li);
   var reqLi=document.createElement('li');
   reqLi.style.marginTop='.4rem';
@@ -1344,6 +1363,7 @@ async function initEmbed(){
   document.body.classList.add('is-embed');
   show('embedMode','flex');
   if(!pManifest){ embedErr('Missing manifest parameter.'); return; }
+  ensureOSD().catch(function(){}); // warm in parallel with the manifest fetch; awaited below
   var ctx=hlCtx=await resolveHighlightContext();
 
   // Attribution bar renders regardless of load outcome — it is not dismissible
@@ -1398,6 +1418,7 @@ async function initEmbed(){
   $('eaCite').href=EMBED_ORIGIN+'/?'+buildEmbedParams().toString();
 
   if(!ctx.ok){ embedErr(ctx.error||'Could not load this view.'); return; }
+  try{ await ensureOSD(); }catch(e){ embedErr('Could not load the image viewer library.'); return; }
 
   // Full page loads (so panning past the crop edges shows the rest of the
   // document, not black), but the view opens framed on the xywh region.
@@ -1483,6 +1504,7 @@ async function loadManifest(url,jumpTo){
   $('stateMsg').className='state';
   $('stateMsg').textContent='Loading…';
   show('stateMsg');
+  ensureOSD().catch(function(){}); // warm in parallel; loadOSD() awaits the same promise
   var result=await fetchManifest(url);
   if(!result.ok){
     var isWorkerMsg666=result.error&&(result.error.includes('Internet Archive')||result.error.includes('Library of Congress')||result.error.includes('source institution')||result.error.includes('Manifest not found')||result.error.includes('Access denied'));
@@ -1816,6 +1838,11 @@ window.goPage=function(d){ gotoPage(currentIdx+d); };
 
 var osdWatchdog=null;
 function loadOSD(canvas){
+  ensureOSD().then(function(){ loadOSDNow(canvas); },function(){
+    showErr('Could not load the image viewer library. Check your connection and try again.');
+  });
+}
+function loadOSDNow(canvas){
   var base=getServiceBase(canvas);
   if(!base){ showErr('No image service found for this canvas.'); return; }
   var ts=base+'/info.json';
