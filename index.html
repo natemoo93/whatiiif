@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,20 +13,22 @@ try{ if(localStorage.getItem('whatiiif-night')==='1') document.documentElement.c
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::placeholder{color:var(--ink-faint);opacity:1}
 /* Light by default (pure-white paper, per UCLA); the dark palette lives
    behind html.night — toggled from the masthead, persisted in localStorage
    (see the head script that applies it before first paint) */
 :root{
-  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
-  --paper:#ffffff;--paper-warm:#ede9e2;--rule:#ccc8c0;
+  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#6e6861;
+  --paper:#ffffff;--paper-warm:#ede9e2;--rule:#ccc8c0;--rule-ui:#87827a;
   --accent:#7a3b1e;--accent-light:#c4886a;--accent-bg:#f5ede8;
   --ok:#3a7a4a;
   --serif:'Spectral',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
   color-scheme:light;
 }
 html.night{
-  --ink:#e9e4da;--ink-mid:#b8b1a5;--ink-faint:#847d73;
-  --paper:#191712;--paper-warm:#221f19;--rule:#3b372f;
+  --ink:#e9e4da;--ink-mid:#b8b1a5;--ink-faint:#918a7f;
+  --paper:#191712;--paper-warm:#221f19;--rule:#3b372f;--rule-ui:#767065;
   --accent:#c98757;--accent-light:#8a5a3a;--accent-bg:#26201a;
   --ok:#6fae7f;
   color-scheme:dark;
@@ -56,18 +57,18 @@ main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
 .viewer-header h1{font-family:var(--serif);font-size:1.5rem;font-weight:300;line-height:1.25;margin-bottom:.35rem}
 .viewer-header p{font-size:.85rem;color:var(--ink-mid);line-height:1.6}
 .input-row{display:flex;gap:.5rem;margin-bottom:.5rem}
-.input-row input{flex:1;font-family:monospace;font-size:.8rem;padding:.55rem .75rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);outline:none}
+.input-row input{flex:1;font-family:monospace;font-size:.8rem;padding:.55rem .75rem;border:1px solid var(--rule-ui);background:var(--paper-warm);color:var(--ink)}
 .input-row input:focus{border-color:var(--accent-light)}
 .input-hint{font-size:.7rem;color:var(--ink-faint);margin-bottom:1.25rem;line-height:1.5}
-.input-hint a{color:var(--accent);text-decoration:none}
+.input-hint a{color:var(--accent);text-decoration:underline}
 .detected-platform{font-size:.72rem;color:var(--ink-faint);margin-top:.3rem;min-height:1rem;font-style:italic}
 .detected-platform.is-found{color:var(--ok);font-style:normal;font-weight:500}
 .page-nav{display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;flex-wrap:wrap}
-.page-nav select{font-size:.78rem;padding:.4rem .6rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);cursor:pointer}
+.page-nav select{font-size:.78rem;padding:.4rem .6rem;border:1px solid var(--rule-ui);background:var(--paper-warm);color:var(--ink);cursor:pointer}
 .pg-label{font-size:.78rem;color:var(--ink-faint)}
 .mode-toggle{display:flex;gap:.5rem;margin-bottom:.75rem;align-items:center}
 .mode-toggle span{font-size:.72rem;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase}
-.toggle-btn{font-size:.72rem;padding:.35rem .8rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .12s}
+.toggle-btn{font-size:.72rem;padding:.35rem .8rem;min-height:24px;border:1px solid var(--rule-ui);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .12s}
 .toggle-btn.is-active{border-color:var(--ink);color:var(--ink);background:var(--paper-warm)}
 .osd-wrap{position:relative;border:1px solid var(--rule);background:#111;overflow:hidden;height:600px;cursor:crosshair}
 #osdEl{width:100%;height:100%}
@@ -86,23 +87,23 @@ details[open] .refine-summary::after{content:' ↑'}
 .refine-body{padding:.75rem;border-top:1px solid var(--rule);background:var(--paper)}
 .refine-coords{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.75rem}
 .refine-field label{display:block;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:.2rem}
-.refine-field input{width:100%;font-family:monospace;font-size:.8rem;padding:.4rem .5rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink);outline:none}
+.refine-field input{width:100%;font-family:monospace;font-size:.8rem;padding:.4rem .5rem;border:1px solid var(--rule-ui);background:var(--paper-warm);color:var(--ink)}
 .refine-field input:focus{border-color:var(--accent-light)}
 .ratio-row{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
 .ratio-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);white-space:nowrap}
-.ratio-btn{font-size:.65rem;font-weight:500;letter-spacing:.06em;padding:.3rem .6rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .1s;white-space:nowrap}
+.ratio-btn{font-size:.65rem;font-weight:500;letter-spacing:.06em;padding:.3rem .6rem;min-height:24px;min-width:24px;border:1px solid var(--rule-ui);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .1s;white-space:nowrap}
 .ratio-btn:hover{border-color:var(--ink);color:var(--ink)}
 .ratio-btn.is-active{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
 .refine-res{font-size:.7rem;color:var(--ink-faint);font-family:monospace;min-height:1rem}
 
 .label-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.85rem}
 .label-row label{font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
-.label-row input{flex:1;font-size:.82rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink);outline:none;font-family:var(--sans)}
+.label-row input{flex:1;font-size:.82rem;padding:.45rem .7rem;border:1px solid var(--rule-ui);background:var(--paper);color:var(--ink);font-family:var(--sans)}
 .label-row input:focus{border-color:var(--accent-light)}
 .url-block .ub-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.35rem}
 .url-row{display:flex;gap:.4rem}
 .url-box{flex:1;min-width:0;font-family:monospace;font-size:.72rem;padding:.45rem .7rem;border:1px solid var(--rule);background:var(--paper-warm);color:var(--ink-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.copy-btn{font-size:.68rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:0 .85rem;border:1px solid var(--rule);background:transparent;color:var(--ink-faint);cursor:pointer;flex-shrink:0;transition:all .12s}
+.copy-btn{font-size:.68rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:0 .85rem;min-height:24px;border:1px solid var(--rule-ui);background:transparent;color:var(--ink-faint);cursor:pointer;flex-shrink:0;transition:all .12s}
 .copy-btn:hover{border-color:var(--ink);color:var(--ink)}
 .copy-btn.is-copied{border-color:var(--ok);color:var(--ok)}
 
@@ -121,18 +122,18 @@ details[open] .refine-summary::after{content:' ↑'}
 .meta-row{display:flex;gap:1rem;padding:.4rem 0;border-bottom:.5px solid var(--rule);font-size:.8rem}
 .mk{width:100px;flex-shrink:0;font-size:.65rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
 .mv{color:var(--ink-mid);word-break:break-all}
-.mv a{color:var(--accent);text-decoration:none}
-.mv a:hover{text-decoration:underline}
+.mv a{color:var(--accent);text-decoration:underline}
 .share-bar{margin-top:1.75rem;border-top:1px solid var(--rule);padding-top:1.1rem}
 .share-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.4rem}
+.share-label a{text-decoration:underline}
 /* embed mode (/embed — framable, chromeless view) */
 /* Embeds stay light regardless of the night toggle: they sit inside other
    sites' pages and whatiiif's own chrome shouldn't leak into hosts' layouts.
    (These body-level vars override html.night's for everything in the embed.)
    The attribution bar is pure white (not var(--paper)) per UCLA. */
 body.is-embed{
-  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#8a8480;
-  --paper:#f7f4ef;--paper-warm:#ede9e2;--rule:#ccc8c0;
+  --ink:#1a1814;--ink-mid:#4a4540;--ink-faint:#6e6861;
+  --paper:#f7f4ef;--paper-warm:#ede9e2;--rule:#ccc8c0;--rule-ui:#87827a;
   --accent:#7a3b1e;--accent-light:#c4886a;--accent-bg:#f5ede8;
   --ok:#3a7a4a;
   color-scheme:light;
@@ -142,7 +143,7 @@ body.is-embed main{max-width:none;padding:0}
 #embedMode{display:none;position:fixed;top:0;left:0;right:0;bottom:0;flex-direction:column;background:#111}
 #embedOsd{flex:1;min-height:0}
 /* hidden until the pointer is over the embed (JS display gate = has-region) */
-#embedRecenter{display:none;position:absolute;top:.5rem;right:.5rem;z-index:10;font-family:var(--sans);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.3rem .6rem;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.45);color:#eee;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s}
+#embedRecenter{display:none;position:absolute;top:.5rem;right:.5rem;z-index:10;font-family:var(--sans);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.3rem .6rem;min-height:24px;border:1px solid rgba(255,255,255,.6);background:rgba(0,0,0,.7);color:#fff;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s}
 #embedMode:hover #embedRecenter,#embedRecenter:focus-visible{opacity:1;pointer-events:auto}
 #embedRecenter:hover{background:rgba(0,0,0,.75)}
 /* Caption and attribution heights are FIXED — the embed snippet's
@@ -155,12 +156,11 @@ body.is-embed main{max-width:none;padding:0}
 .embed-attr .ea-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
 .embed-attr .ea-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
 .embed-attr .ea-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-faint)}
-.embed-attr a{color:var(--accent);text-decoration:none;white-space:nowrap;flex-shrink:0}
-.embed-attr a:hover{text-decoration:underline}
+.embed-attr a{color:var(--accent);text-decoration:underline;white-space:nowrap;flex-shrink:0}
 .embed-attr .ea-cite{color:var(--ink-faint);font-size:.62rem}
 
 footer{border-top:1px solid var(--rule);padding:.9rem 2rem;font-size:.68rem;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem}
-footer a{color:var(--ink-faint);text-decoration:none}
+footer a{color:var(--ink-faint);text-decoration:underline}
 footer a:hover{color:var(--ink)}
 </style>
 </head>
@@ -189,7 +189,7 @@ footer a:hover{color:var(--ink)}
 })();
 </script>
 <main>
-  <div id="stateMsg" class="state" style="display:none"></div>
+  <div id="stateMsg" class="state" role="status" aria-live="polite" style="display:none"></div>
 
   <!-- VIEWER MODE -->
   <div id="viewerMode">
@@ -199,10 +199,10 @@ footer a:hover{color:var(--ink)}
     </div>
 
     <div class="input-row">
-      <input type="url" id="urlInput" placeholder="Page URL or manifest URL…" oninput="onUrlInput()" />
+      <input type="url" id="urlInput" aria-label="Page URL or manifest URL" placeholder="Page URL or manifest URL…" oninput="onUrlInput()">
       <button class="btn is-accent" onclick="handleLoad()">Load</button>
     </div>
-    <div class="detected-platform" id="detectedPlatform"></div>
+    <div class="detected-platform" id="detectedPlatform" role="status" aria-live="polite"></div>
     <details class="refine-details" style="margin-bottom:.5rem">
       <summary class="refine-summary">Auto-detect Supported institutions</summary>
       <div class="refine-body">
@@ -212,13 +212,13 @@ footer a:hover{color:var(--ink)}
     <p class="input-hint" style="margin-top:.3rem">
   Try it with one of these sample items:
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a> ·
-  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a> · 
-  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">La végétation sous-marine (Yale)</a>
+  <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a>
+· <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">Yale sample item</a>
   </p>
  <div class="page-nav" id="pageNav" style="display:none">
-      <button class="btn" onclick="goPage(-1)">&#8592;</button>
-      <select id="pageSelect" onchange="gotoPage(+this.value)"></select>
-      <button class="btn" onclick="goPage(1)">&#8594;</button>
+      <button class="btn" aria-label="Previous page" onclick="goPage(-1)">&#8592;</button>
+      <select id="pageSelect" aria-label="Page" onchange="gotoPage(+this.value)"></select>
+      <button class="btn" aria-label="Next page" onclick="goPage(1)">&#8594;</button>
       <span class="pg-label" id="pgLabel"></span>
     </div>
     <div class="mode-toggle" id="modeToggle" style="display:none">
@@ -228,7 +228,7 @@ footer a:hover{color:var(--ink)}
     </div>
     <div class="osd-wrap" id="osdWrap" style="display:none">
       <div id="osdEl"></div>
-      <svg id="selSvg" xmlns="http://www.w3.org/2000/svg">
+      <svg id="selSvg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <rect id="selRect" x="0" y="0" width="0" height="0"
           fill="rgba(173,255,47,0.28)" stroke="#65a30d" stroke-width="1.5"
           stroke-dasharray="5,3" vector-effect="non-scaling-stroke"/>
@@ -249,19 +249,19 @@ footer a:hover{color:var(--ink)}
         <div class="refine-body">
           <div class="refine-coords">
             <div class="refine-field">
-              <label>x</label>
+              <label for="refX">x</label>
               <input type="number" id="refX" min="0" oninput="applyManualCoords()">
             </div>
             <div class="refine-field">
-              <label>y</label>
+              <label for="refY">y</label>
               <input type="number" id="refY" min="0" oninput="applyManualCoords()">
             </div>
             <div class="refine-field">
-              <label>w</label>
+              <label for="refW">w</label>
               <input type="number" id="refW" min="1" oninput="applyManualCoords()">
             </div>
             <div class="refine-field">
-              <label>h</label>
+              <label for="refH">h</label>
               <input type="number" id="refH" min="1" oninput="applyManualCoords()">
             </div>
           </div>
@@ -286,7 +286,7 @@ footer a:hover{color:var(--ink)}
         <p class="ub-label">Shareable highlight link</p>
         <div class="url-row">
           <div class="url-box" id="generatedUrl"></div>
-          <button class="copy-btn" id="copyGenBtn" onclick="copyGenUrl()">Copy</button>
+          <button class="copy-btn" id="copyGenBtn" aria-live="polite" onclick="copyGenUrl()">Copy</button>
         </div>
       </div>
       <div class="actions" style="margin-top:.85rem">
@@ -305,13 +305,13 @@ footer a:hover{color:var(--ink)}
     <div class="image-panel">
       <div>
         <p class="panel-label">Selected region</p>
-        <img class="panel-img" id="cropImg" alt="Highlighted region">
+        <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Highlighted region">
       </div>
       <div>
         <p class="panel-label">In context — page <span id="hlPageNum">—</span></p>
         <div class="ctx-wrap">
-          <img class="panel-img" id="ctxImg" alt="Full page in context">
-          <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none">
+          <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
+          <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
             <rect id="hlRect" x="0" y="0" width="0" height="0"
               fill="rgba(173,255,47,0.32)" stroke="#65a30d" stroke-width="0.008"
               vector-effect="non-scaling-stroke"/>
@@ -330,7 +330,7 @@ footer a:hover{color:var(--ink)}
       <p class="share-label">Shareable link</p>
       <div class="url-row">
         <div class="url-box" id="hlShareUrl"></div>
-        <button class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
+        <button class="copy-btn" id="hlCopyBtn" aria-live="polite" onclick="copyHlUrl()">Copy</button>
       </div>
       <p class="share-label" style="margin-top:.75rem">Embed iframe
         <span style="margin-left:.6rem">
@@ -341,12 +341,12 @@ footer a:hover{color:var(--ink)}
       </p>
       <div class="url-row">
         <div class="url-box" id="hlEmbedCode" style="font-size:.7rem"></div>
-        <button class="copy-btn" id="hlEmbedCopyBtn" onclick="copyHlEmbed()">Copy</button>
+        <button class="copy-btn" id="hlEmbedCopyBtn" aria-live="polite" onclick="copyHlEmbed()">Copy</button>
       </div>
       <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" style="color:inherit">IIIF Content State</a> (paste into any compatible viewer, or <a id="hlTheseusLink" href="#" target="_blank" style="color:inherit">open in Theseus ↗</a>)</p>
       <div class="url-row">
         <div class="url-box" id="hlContentStateUrl" style="font-size:.7rem"></div>
-        <button class="copy-btn" id="hlCsCopyBtn" onclick="copyHlCsUrl()">Copy</button>
+        <button class="copy-btn" id="hlCsCopyBtn" aria-live="polite" onclick="copyHlCsUrl()">Copy</button>
       </div>
     </div>
   </div>
@@ -357,7 +357,7 @@ footer a:hover{color:var(--ink)}
     <div id="embedOsd"></div>
     <div class="embed-caption" id="eaCaption"></div>
     <div class="embed-attr">
-      <img id="eaLogo" alt="" style="display:none">
+      <img id="eaLogo" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" style="display:none">
       <span class="ea-lines">
         <span class="ea-title" id="eaTitle"></span>
         <span class="ea-text" id="eaText"></span>
@@ -428,7 +428,8 @@ function iiifUrl(base,region,size){
 }
 
 /* ══ PLATFORM DETECTION ══
-This enables automatic manifest dereferencing from an intstitution's item page.
+   Only CONTENTdm and Internet Archive are officially supported.
+   For other institutions paste the manifest URL directly.
 */
 var PLATFORMS=[
 
@@ -803,7 +804,7 @@ var EXTRA_INSTITUTIONS = [
   var li=document.createElement('li');
   li.style.color='var(--ink-faint)';
   li.style.fontSize='.72rem';
-  li.textContent='✓ Any CONTENTdm-hosted institution';
+  li.textContent='✓ Any other CONTENTdm-hosted institution';
   list.appendChild(li);
   var reqLi=document.createElement('li');
   reqLi.style.marginTop='.4rem';
