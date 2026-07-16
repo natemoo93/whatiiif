@@ -1,6 +1,6 @@
 # whatiiif
 
-Create shareable deep links to highlighted regions inside digitized primary sources. Paste a page URL from a supported library, archive, or museum (or a direct IIIF manifest URL), drag a box over the part you care about, and get back a permanent link, an embeddable iframe, or an IIIF Content State token that points precisely at that region.
+Create shareable deep links to highlighted regions inside digitized primary sources. Paste a page URL from a supported library, archive, or museum (or a direct IIIF manifest URL), drag a box over the part you care about, and get back a permanent link, an embeddable iframe, or a IIIF Content State token that points precisely at that region.
 
 Live at [whatiiif.com](https://whatiiif.com). Works with any IIIF Presentation API 2 or 3 source.
 
