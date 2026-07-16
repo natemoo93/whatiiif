@@ -62,7 +62,6 @@ Publishing IIIF and want your institution added? Get in touch through the [conta
 | File | Purpose |
 |---|---|
 | `index.html` | The whole application: viewer, region selection, highlight landing page, and embed view |
-| `whatiiif_Cloudflare_Worker.js` | Cloudflare Worker for the `/manifest-proxy` and `/embed` routes |
 | `contact.html` | Contact and about page |
 | `terms.html` | Terms of use |
 | `sitemap.xml`, `robots.txt` | Search-engine metadata |
