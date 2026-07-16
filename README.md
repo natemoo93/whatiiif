@@ -51,7 +51,7 @@ Publishing IIIF and want your institution added? Get in touch through the [conta
 ## How it is built
 
 - **Front end.** A single self-contained `index.html` (no build step, no framework) served as a static page from GitHub Pages. [OpenSeadragon](https://openseadragon.github.io/) powers the deep-zoom viewer and is loaded only when a viewer is actually needed, so highlight landing pages stay fast.
-- **Cloudflare Worker** ([whatiiif_Cloudflare_Worker.js](whatiiif_Cloudflare_Worker.js)). Provides two routes:
+- **Cloudflare Worker** (Not ready for redistribution yet; contact me if you are interested). Provides two routes:
   - `/manifest-proxy`, a CORS-adding proxy for the handful of institutions whose manifests are not cross-origin friendly, and
   - `/embed`, the iframe-safe chromeless viewer used by embed codes.
 
