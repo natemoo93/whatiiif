@@ -1,35 +1,73 @@
-# Whatiiif
+# whatiiif
 
-A lightweight tool for creating shareable deep links to specific regions of digitized documents in any IIIF-compliant collection.
+Create shareable deep links to highlighted regions inside digitized primary sources. Paste a page URL from a supported library, archive, or museum (or a direct IIIF manifest URL), drag a box over the part you care about, and get back a permanent link, an embeddable iframe, or an IIIF Content State token that points precisely at that region.
 
-## The problem
+Live at [whatiiif.com](https://whatiiif.com). Works with any IIIF Presentation API 2 or 3 source.
 
-IIIF (International Image Interoperability Framework) has made digitized primary sources accessible across thousands of institutional repositories. But sharing a precise reference to something specific like a name in a census, a passage in a manuscript, an entry in a travel log, still means either sending a vague "it's on page 6 somewhere" or hoping your viewer's URL updates as you navigate.
+## What it does
 
-Whatiiif closes that gap. Paste a JSON manifest or a page URL from a supported institution, draw a box around what you want to share, and get a permanent link that shows anyone exactly what you're pointing at. No viewer software required.
+1. **Paste a URL.** A page URL from a supported institution, a direct IIIF manifest URL, or a share link from another IIIF viewer (any URL carrying a `?manifest=` parameter). whatiiif detects the source and resolves it to a manifest for you.
+2. **Find the page.** Multi-page items get page navigation, so you can move to the exact leaf you want.
+3. **Select a region.** Drag a box in the deep-zoom viewer, or switch to pan and zoom to move around first. Keyboard users can pan with the arrow keys, zoom with `+` and `-`, or type exact coordinates under "Refine selection." Optional aspect-ratio constraints (phone 9:16, desktop 16:9, square, US Letter, A4) keep crops tidy.
+4. **Add a label and share.** Give the region a caption, then copy any of:
+   - a **shareable highlight link** back to whatiiif that reopens the region in context,
+   - an **embeddable iframe** (small, medium, or large) for a course page, LMS, or blog,
+   - an **IIIF Content State token** (Content State API 1.0) that pastes into any compatible viewer, with a one-click "open in Theseus" shortcut.
+5. **Download.** Grab the selected region or the full page at full resolution straight from the source image server.
 
-## How it works
+Other niceties: a light and dark (Night) theme that remembers your choice, a chromeless `/embed` view built for iframing, and an attribution bar on embeds that always credits the source institution.
 
-- Accepts page URLs from a growing list of supported platforms (CONTENTdm, Internet Archive, Library of Congress, etc.) or direct IIIF manifest URLs
-- Detects the platform and resolves the IIIF manifest automatically
-- Loads the document in a zoomable viewer powered by OpenSeadragon
-- Lets you drag a selection box over any region of any page
-- Generates a shareable URL that renders the cropped region alongside its full-page context, visible to anyone in a standard browser
+## Supported institutions
 
-## Who it's for
+Paste a normal item or catalog page URL from any of these and whatiiif resolves the manifest automatically:
 
-Researchers citing specific content in digitized primary sources, digital humanities scholars, librarians, archivists, and anyone who has ever tried to point a colleague at something specific in a 300-page scan.
+- Library of Congress (item pages, Chronicling America newspaper pages, and general resource URLs)
+- Harvard Digital Collections (viewer links, DRS URN manifests, and CURIOSity catalog pages)
+- Yale Library
+- Internet Archive
+- Smithsonian Libraries
+- Biodiversity Heritage Library
+- Cambridge Digital Library
+- UCLA Digital Collections
+- Princeton University Library (DPUL)
+- Northwestern University Libraries Digital Collections
+- Illinois State University Digital Collections
+- CARLI Digital Collections
+- Any CONTENTdm-hosted institution (custom domains included)
 
-## Self-host
+Also accepted directly, no institution handler required:
 
-whatiiif is a single static HTML file with no backend dependencies. Download `index.html` and serve it from anywhere.  The core viewer/link generation is a single static HTML file with no backend. Manifest-proxy and OG card generation are optional, hosted separately, and only used on whatiiif.com itself.  They aren't packaged for redistribution yet, so please reach out if you want to self-host the full setup.
+- Direct IIIF manifest URLs (ending in `manifest.json` or `/manifest`)
+- Share links from other IIIF viewers (Theseus, Mirador, Universal Viewer, and whatiiif itself)
 
-## Built with
+Publishing IIIF and want your institution added? Get in touch through the [contact page](https://whatiiif.com/contact.html) or the [request form](https://tally.so/r/aQoOBE).
 
-- [OpenSeadragon](https://openseadragon.github.io/) for zoomable image rendering
-- [IIIF Presentation API](https://iiif.io/api/presentation/) 2 and 3
-- [IIIF Image API](https://iiif.io/api/image/) for server-side region cropping
+## Coming soon
 
-## License
+### Sniiiffer, a faithful companion browser extension
 
-MIT
+**Sniiiffer** is whatiiif's faithful companion browser extension. It rides along quietly in your toolbar and sniffs out IIIF manifests on the pages you visit, so you can copy a manifest, open an item in whatiiif, or highlight a region without leaving the page you are on. More to come.
+
+## How it is built
+
+- **Front end.** A single self-contained `index.html` (no build step, no framework) served as a static page from GitHub Pages. [OpenSeadragon](https://openseadragon.github.io/) powers the deep-zoom viewer and is loaded only when a viewer is actually needed, so highlight landing pages stay fast.
+- **Cloudflare Worker** ([whatiiif_Cloudflare_Worker.js](whatiiif_Cloudflare_Worker.js)). Provides two routes:
+  - `/manifest-proxy`, a CORS-adding proxy for the handful of institutions whose manifests are not cross-origin friendly, and
+  - `/embed`, the iframe-safe chromeless viewer used by embed codes.
+
+  Most institutions are fetched directly from the browser; the proxy is used only where an institution's CORS or IP rules require it.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `index.html` | The whole application: viewer, region selection, highlight landing page, and embed view |
+| `whatiiif_Cloudflare_Worker.js` | Cloudflare Worker for the `/manifest-proxy` and `/embed` routes |
+| `contact.html` | Contact and about page |
+| `terms.html` | Terms of use |
+| `sitemap.xml`, `robots.txt` | Search-engine metadata |
+| `favicon.png` | Site icon |
+
+## Contact
+
+Built and maintained by Nate Moore. Email nate@whatiiif.com, open an issue at [github.com/natemoo93/whatiiif](https://github.com/natemoo93/whatiiif), or use the [feedback form](https://tally.so/r/ZjgNDv) to report a misbehaving institution handler.
