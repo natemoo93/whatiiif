@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -462,11 +463,11 @@ function iiifUrl(base,region,size){
 }
 
 // A level-0 IIIF Image service only serves the exact derivatives it has
-// pre-generated. It cannot crop an arbitrary region or scale to an arbitrary
-// width on demand. Requesting {svc}/{region}/{w},/0/default.jpg against one
-// returns 404 (see Brynmawr/PTannotated static-tile sources). Detect it from
-// the info.json profile / compliance level, and stash the discrete full-image
-// widths the service DOES offer (from the `sizes` array) so we can snap to one.
+// pre-generated. It cannot crop an arbitrary region or scale on demand.
+// Requesting {svc}/{region}/{w},/0/default.jpg against one returns 404 (see
+// Brynmawr/PTannotated static-tile sources). Even the width-only "w," form
+// 404s; the FULL region must be requested at the exact published "w,h" size.
+// Detect level 0 from the info.json profile and stash its published sizes.
 function iiifLevel0(info){
   if(!info) return false;
   // v3: `profile` is a bare compliance string, e.g. "level0"
@@ -480,23 +481,26 @@ function iiifLevel0(info){
   }
   return false;
 }
-function infoSizeWidths(info){
+// Published {w,h} sizes, ascending by width.
+function infoSizes(info){
   if(!info||!Array.isArray(info.sizes)) return [];
   return info.sizes
-    .map(function(s){return s&&s.width;})
-    .filter(function(w){return typeof w==='number'&&w>0;})
-    .sort(function(a,b){return a-b;});
+    .filter(function(s){return s&&typeof s.width==='number'&&s.width>0;})
+    .map(function(s){return {w:s.width,h:s.height};})
+    .sort(function(a,b){return a.w-b.w;});
 }
-// Attach level-0 status + available widths to the highlight context.
+// Attach level-0 status + published sizes to the highlight context.
 function applyInfoProfile(ctx,info){
   ctx.level0=iiifLevel0(info);
-  ctx.sizeWidths=infoSizeWidths(info);
+  ctx.sizes=infoSizes(info);
 }
-// Smallest available width >= want; if none is large enough, the largest we have.
-function snapWidth(widths,want){
-  if(!widths||!widths.length) return null;
-  for(var i=0;i<widths.length;i++){ if(widths[i]>=want) return widths[i]; }
-  return widths[widths.length-1];
+// Smallest published size with width >= want; else the largest. Returns the
+// exact size string ("w,h" when height is known, else "w,").
+function snapSize(sizes,want){
+  if(!sizes||!sizes.length) return null;
+  var pick=sizes[sizes.length-1];
+  for(var i=0;i<sizes.length;i++){ if(sizes[i].w>=want){ pick=sizes[i]; break; } }
+  return (typeof pick.h==='number'&&pick.h>0)?(pick.w+','+pick.h):(pick.w+',');
 }
 
 /* ══ PLATFORM DETECTION ══*/
@@ -1289,7 +1293,7 @@ async function initHighlight(){
   }
   var m=ctx.m, cvs=ctx.cvs, idx=ctx.idx, canvas=ctx.canvas, canvasId=ctx.canvasId, manifestId=ctx.manifestId;
   var mLabel=ctx.mLabel, cLabel=ctx.cLabel, cW=ctx.cW, cH=ctx.cH, svcBase=ctx.svcBase;
-  var level0=!!ctx.level0, sizeWidths=ctx.sizeWidths||[];
+  var level0=!!ctx.level0, l0sizes=ctx.sizes||[];
 
   var region='full',rx=0,ry=0,rw=cW,rh=cH;
   if(pXywh){
@@ -1338,11 +1342,11 @@ async function initHighlight(){
   // page; the selected region is still conveyed by the overlay rect on the
   // context panel, and the notice below explains the limitation.
   function panelSrcL0(el,targetW){
-    var w=snapWidth(sizeWidths,targetW);
+    var sz=snapSize(l0sizes,targetW); // exact published "w,h"
     var reg=fullSizeParam(svcBase); // 'full' (v2) or 'max' (v3)
     // No `sizes` advertised: fall back to the plain full-region request. Some
     // level-0 services still answer /full/full (or /full/max) even without it.
-    el.src=w?iiifUrl(svcBase,'full',w+','):iiifUrl(svcBase,'full',reg);
+    el.src=sz?iiifUrl(svcBase,'full',sz):iiifUrl(svcBase,'full',reg);
   }
   if(proxy){
     // Worker-supplied URLs — already level-0-aware (full page at a snapped
@@ -1400,8 +1404,8 @@ async function initHighlight(){
   // Level 0 can't crop, so this necessarily links the full page instead.
   var fullResUrl;
   if(level0){
-    var l0w=snapWidth(sizeWidths,cW); // largest available width, capped at page width
-    fullResUrl=l0w?iiifUrl(svcBase,'full',l0w+','):iiifUrl(svcBase,'full',fullSizeParam(svcBase));
+    var l0sz=snapSize(l0sizes,cW); // largest published size (none reaches full width)
+    fullResUrl=l0sz?iiifUrl(svcBase,'full',l0sz):iiifUrl(svcBase,'full',fullSizeParam(svcBase));
     $('hlFullResBtn').textContent='Full resolution page ↓';
   } else {
     fullResUrl=pXywh
@@ -1415,8 +1419,8 @@ async function initHighlight(){
   // server-cropped region, and (if we snapped) at what size.
   var notice=$('hlNotice');
   if(level0){
-    var widthNote=sizeWidths.length
-      ? ' Previews use the nearest size it publishes ('+sizeWidths.join(', ')+' px wide).'
+    var widthNote=l0sizes.length
+      ? ' Previews use the nearest size it publishes ('+l0sizes.map(function(s){return s.w;}).join(', ')+' px wide).'
       : ' It also doesn’t advertise preset sizes, so the full-page request may still fail on some servers.';
     notice.innerHTML='<b>Level 0 image source.</b> This IIIF service serves only pre-generated tiles. '
       +'It can’t crop an arbitrary region or resize on demand, so '+(pXywh
