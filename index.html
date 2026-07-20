@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Whatiiif</title>
-<meta name="description" content="Create shareable deep links to highlighted regions in digitized primary sources. Works with Library of Congress, Yale, Internet Archive, Smithsonian, and more.">
+<meta name="description" content="Create shareable deep links to highlighted regions in digitized primary sources.">
 <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
 <script>
 /* Apply saved night mode before first paint so there's no light flash */
@@ -1293,6 +1293,8 @@ async function initHighlight(){
   var m=ctx.m, cvs=ctx.cvs, idx=ctx.idx, canvas=ctx.canvas, canvasId=ctx.canvasId, manifestId=ctx.manifestId;
   var mLabel=ctx.mLabel, cLabel=ctx.cLabel, cW=ctx.cW, cH=ctx.cH, svcBase=ctx.svcBase;
   var level0=!!ctx.level0, l0sizes=ctx.sizes||[];
+  // Level-0 client-side crop state, filled in asynchronously by renderLevel0Crop.
+  var level0CropDataUrl=null, level0CropFailed=false;
 
   var region='full',rx=0,ry=0,rw=cW,rh=cH;
   if(pXywh){
@@ -1335,38 +1337,85 @@ async function initHighlight(){
       el.sizes='(max-width:620px) calc(100vw - 4rem), 442px';
     }
   }
-  // Level 0: the service can't crop or free-scale. Request the WHOLE page
-  // (region 'full'/'max') at one of the discrete widths it advertises in
-  // `sizes`, snapping to the nearest available. Both panels show the full
-  // page; the selected region is still conveyed by the overlay rect on the
-  // context panel, and the notice below explains the limitation.
-  function panelSrcL0(el,targetW){
-    var sz=snapSize(l0sizes,targetW); // exact published "w,h"
+  // Level 0: the service can't crop or free-scale server-side. We request the
+  // WHOLE page at one of the discrete sizes it advertises in `sizes` (snapped to
+  // the nearest), then crop the region from it client-side in renderLevel0Crop.
+  // Whole-page URL at the published size nearest targetW (exact "w,h").
+  function l0PageUrl(targetW){
+    var sz=snapSize(l0sizes,targetW);
     var reg=fullSizeParam(svcBase); // 'full' (v2) or 'max' (v3)
     // No `sizes` advertised: fall back to the plain full-region request. Some
     // level-0 services still answer /full/full (or /full/max) even without it.
-    el.src=sz?iiifUrl(svcBase,'full',sz):iiifUrl(svcBase,'full',reg);
+    return sz?iiifUrl(svcBase,'full',sz):iiifUrl(svcBase,'full',reg);
   }
-  if(proxy){
-    // Worker-supplied URLs — already level-0-aware (full page at a snapped
-    // width when the service can't crop).
+  // Level-0 client-side region crop. The service can't crop server-side, but a
+  // whole-page derivative contains the region, so fetch that derivative once,
+  // draw just the xywh rect onto a canvas, and hand the result to the crop
+  // <img> as a JPEG data URL. Prefer the proxied whole-page URL (proxy.crop is
+  // already the full page for level 0) so the fetch is CORS-enabled and the
+  // canvas stays exportable/saveable; else request the largest published size
+  // directly. Scale factor comes from the loaded image's natural size vs the
+  // canvas (info.json) pixel space, so it stays correct even if the server
+  // returns a slightly different size than requested. Resolves to a data URL,
+  // or null if the crop couldn't be produced.
+  function renderLevel0Crop(){
+    var srcUrl=(proxy&&proxy.crop)||l0PageUrl(Math.max(cW,1)); // largest published page
+    return new Promise(function(resolve){
+      var img=new Image();
+      img.crossOrigin='anonymous'; // proxy sends ACAO; keeps the canvas exportable
+      img.onload=function(){
+        try{
+          var k=img.naturalWidth/cW; // page-pixel space -> derivative-pixel space
+          var sx=Math.round(rx*k), sy=Math.round(ry*k);
+          var sw=Math.max(1,Math.round(rw*k)), sh=Math.max(1,Math.round(rh*k));
+          // Clamp to the decoded bitmap so drawImage never reads out of bounds.
+          sx=Math.min(sx,img.naturalWidth-1); sy=Math.min(sy,img.naturalHeight-1);
+          sw=Math.min(sw,img.naturalWidth-sx); sh=Math.min(sh,img.naturalHeight-sy);
+          var cv=document.createElement('canvas');
+          cv.width=sw; cv.height=sh;
+          cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
+          resolve(cv.toDataURL('image/jpeg',0.92));
+        }catch(e){ resolve(null); } // tainted canvas or draw error -> caller falls back
+      };
+      img.onerror=function(){ resolve(null); };
+      img.src=srcUrl;
+    });
+  }
+  if(proxy && !level0){
+    // Worker-supplied URLs (server-cropped): level 1/2 only.
     $('cropImg').src=proxy.crop;
     $('ctxImg').src=proxy.ctx;
   } else if(level0){
-    panelSrcL0($('cropImg'),800);
-    panelSrcL0($('ctxImg'),600);
+    // Context panel: whole page at a published size (proxied when available).
+    $('ctxImg').src=(proxy&&proxy.ctx)||l0PageUrl(600);
+    if(pXywh){
+      // Crop panel: real region, cropped client-side. Show the full page as an
+      // immediate placeholder, then swap in the canvas crop when it's ready.
+      $('cropImg').src=(proxy&&proxy.crop)||l0PageUrl(800);
+      renderLevel0Crop().then(function(dataUrl){
+        if(dataUrl){
+          $('cropImg').src=dataUrl;
+          $('cropImg').removeAttribute('srcset');
+          $('cropImg').width=rw;$('cropImg').height=rh;
+          $('cropImg').alt='Cropped region';
+          $('cropPanelLabel').textContent='Selected region';
+          level0CropDataUrl=dataUrl; // for the full-res download button
+        }else{
+          // Couldn't crop client-side (e.g. missing CORS): keep the full page
+          // and fall back to the whole-page presentation + notice wording.
+          level0CropFailed=true;
+          $('cropImg').width=cW;$('cropImg').height=cH;
+          $('cropImg').alt='Full page (selected region highlighted in the context view)';
+          $('cropPanelLabel').textContent='Page (region highlighted at right →)';
+        }
+        refreshLevel0Ui();
+      });
+    }else{
+      $('cropImg').src=(proxy&&proxy.crop)||l0PageUrl(800);
+    }
   } else {
     panelSrc($('cropImg'),pXywh?region:'full',pXywh?rw:cW,800);
     panelSrc($('ctxImg'),'full',cW,600);
-  }
-  // Whenever the source is level 0 (proxied or not), the "crop" panel actually
-  // shows the whole page, so give it the page aspect ratio (avoids a squashed
-  // placeholder / layout shift) and relabel it. The region is conveyed by the
-  // overlay rect on the context panel.
-  if(level0 && pXywh){
-    $('cropImg').width=cW;$('cropImg').height=cH;
-    $('cropImg').alt='Full page (selected region highlighted in the context view)';
-    $('cropPanelLabel').textContent='Page (region highlighted at right →)';
   }
 
   // hlRect applied after show('highlightMode') below
@@ -1401,35 +1450,47 @@ async function initHighlight(){
 
   // Full resolution crop — region at max quality, opens as plain image.
   // Level 0 can't crop, so this necessarily links the full page instead.
-  var fullResUrl;
-  if(level0){
+  function refreshLevel0Ui(){
+    var notice=$('hlNotice');
+    if(!level0){
+      $('hlFullResBtn').dataset.url=pXywh
+        ?iiifUrl(svcBase,region,fullSizeParam(svcBase))
+        :iiifUrl(svcBase,'full',fullSizeParam(svcBase));
+      if(!pXywh) $('hlFullResBtn').textContent='Full resolution page ↓';
+      notice.hidden=true;
+      return;
+    }
     var l0sz=snapSize(l0sizes,cW); // largest published size (none reaches full width)
-    fullResUrl=l0sz?iiifUrl(svcBase,'full',l0sz):iiifUrl(svcBase,'full',fullSizeParam(svcBase));
-    $('hlFullResBtn').textContent='Full resolution page ↓';
-  } else {
-    fullResUrl=pXywh
-      ?iiifUrl(svcBase,region,fullSizeParam(svcBase))
-      :iiifUrl(svcBase,'full',fullSizeParam(svcBase));
-    if(!pXywh) $('hlFullResBtn').textContent='Full resolution page ↓';
+    var pageUrl=l0sz?iiifUrl(svcBase,'full',l0sz):iiifUrl(svcBase,'full',fullSizeParam(svcBase));
+    var haveCrop=pXywh && !!level0CropDataUrl;
+    // Download the client-cropped region when we have it, else the full page.
+    $('hlFullResBtn').dataset.url=haveCrop?level0CropDataUrl:pageUrl;
+    $('hlFullResBtn').dataset.filename=haveCrop
+      ?((pLabel||cLabel||'region').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)+'-crop.jpg')
+      :'';
+    $('hlFullResBtn').textContent=haveCrop?'Download region ↓':'Full resolution page ↓';
+    refreshLevel0Notice(notice,haveCrop);
   }
-  $('hlFullResBtn').dataset.url=fullResUrl;
 
-  // Level-0 notice — explain why the preview shows the whole page rather than a
-  // server-cropped region, and (if we snapped) at what size.
-  var notice=$('hlNotice');
-  if(level0){
+  // Level-0 notice. Explains that the source can only serve whole pages, and
+  // adapts to the crop outcome (real region vs. whole-page fallback).
+  function refreshLevel0Notice(notice,haveCrop){
     var widthNote=l0sizes.length
       ? ' Previews use the nearest size it publishes ('+l0sizes.map(function(s){return s.w;}).join(', ')+' px wide).'
       : ' It also doesn’t advertise preset sizes, so the full-page request may still fail on some servers.';
     notice.innerHTML='<b>Level 0 image source.</b> This IIIF service serves only pre-generated tiles. '
-      +'It can’t crop an arbitrary region or resize on demand, so '+(pXywh
-        ?'the panels show the <b>whole page</b> and your selection is marked by the highlight box in the context view.'
-        :'the preview shows the <b>whole page</b> at its published size.')+esc(widthNote)
+      +'It cannot crop an arbitrary region or resize on demand, so '+level0Body()+esc(widthNote)
       +' Deep-zoom and sharing still work normally.';
     notice.hidden=false;
-  } else {
-    notice.hidden=true;
   }
+  // The middle sentence adapts to the crop outcome.
+  function level0Body(){
+    if(!pXywh) return 'the preview shows the <b>whole page</b> at its published size.';
+    if(level0CropFailed) return 'the panel shows the <b>whole page</b> and your selection is marked by the highlight box in the context view.';
+    // Crop succeeded, or still pending on the optimistic first call.
+    return 'the region shown here is cropped in your browser from the full page.';
+  }
+  refreshLevel0Ui();
 
   show('highlightMode');
 
@@ -2215,12 +2276,21 @@ function triggerDownload(url, filename){
 }
 
 window.downloadFullRes=function(){
-  var url=$('hlFullResBtn').dataset.url;
+  var btn=$('hlFullResBtn');
+  var url=btn.dataset.url;
   if(!url) return;
   var a=document.createElement('a');
   a.href=url;
-  a.target='_blank';
-  a.rel='noopener';
+  // Level-0 client-side crop: url is a data: URL and we have a filename, so
+  // trigger a real download instead of opening a (possibly huge) data URL in a
+  // new tab. Data URLs are same-origin, so a.download is honoured.
+  var fname=btn.dataset.filename;
+  if(fname && url.indexOf('data:')===0){
+    a.download=fname;
+  } else {
+    a.target='_blank';
+    a.rel='noopener';
+  }
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
