@@ -118,6 +118,9 @@ details[open] .refine-summary::after{content:' ↑'}
 #highlightMode{display:none}
 .hl-title{font-family:var(--serif);font-size:2rem;font-weight:300;line-height:1.2;margin-bottom:.3rem}
 .hl-note{font-size:.85rem;color:var(--ink-faint);margin-bottom:1.75rem}
+.hl-notice{font-size:.82rem;line-height:1.55;color:var(--ink-mid);background:var(--accent-bg);border:1px solid var(--rule);border-left:3px solid var(--accent);padding:.7rem .9rem;margin:-.9rem 0 1.75rem}
+.hl-notice[hidden]{display:none}
+.hl-notice b{color:var(--ink);font-weight:600}
 .eyebrow{font-size:.68rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.5rem}
 .image-panel{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;margin-bottom:1.5rem}
 @media(max-width:620px){.image-panel{grid-template-columns:1fr}}
@@ -312,9 +315,10 @@ footer a:hover{color:var(--ink)}
     <p class="eyebrow" id="hlEyebrow">IIIF Document</p>
     <h1 class="hl-title" id="hlTitle">—</h1>
     <p class="hl-note" id="hlNote"></p>
+    <div class="hl-notice" id="hlNotice" hidden></div>
     <div class="image-panel">
       <div>
-        <p class="panel-label">Selected region</p>
+        <p class="panel-label" id="cropPanelLabel">Selected region</p>
         <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
       </div>
       <div>
@@ -455,6 +459,44 @@ function getServiceBase(canvas){
 }
 function iiifUrl(base,region,size){
   return base.replace(/\/+$/,'')+'/'+region+'/'+(size||'800,')+'/0/default.jpg';
+}
+
+// A level-0 IIIF Image service only serves the exact derivatives it has
+// pre-generated. It cannot crop an arbitrary region or scale to an arbitrary
+// width on demand. Requesting {svc}/{region}/{w},/0/default.jpg against one
+// returns 404 (see Brynmawr/PTannotated static-tile sources). Detect it from
+// the info.json profile / compliance level, and stash the discrete full-image
+// widths the service DOES offer (from the `sizes` array) so we can snap to one.
+function iiifLevel0(info){
+  if(!info) return false;
+  // v3: `profile` is a bare compliance string, e.g. "level0"
+  if(typeof info.profile==='string'&&/level0|#?level0/i.test(info.profile)) return true;
+  // v2: `profile` is a string or an array whose first entry is a level URI
+  var p=info.profile;
+  var arr=Array.isArray(p)?p:[p];
+  for(var i=0;i<arr.length;i++){
+    var v=arr[i];
+    if(typeof v==='string'&&/\/level0\.json$|#level0$|:level0$/i.test(v)) return true;
+  }
+  return false;
+}
+function infoSizeWidths(info){
+  if(!info||!Array.isArray(info.sizes)) return [];
+  return info.sizes
+    .map(function(s){return s&&s.width;})
+    .filter(function(w){return typeof w==='number'&&w>0;})
+    .sort(function(a,b){return a-b;});
+}
+// Attach level-0 status + available widths to the highlight context.
+function applyInfoProfile(ctx,info){
+  ctx.level0=iiifLevel0(info);
+  ctx.sizeWidths=infoSizeWidths(info);
+}
+// Smallest available width >= want; if none is large enough, the largest we have.
+function snapWidth(widths,want){
+  if(!widths||!widths.length) return null;
+  for(var i=0;i<widths.length;i++){ if(widths[i]>=want) return widths[i]; }
+  return widths[widths.length-1];
 }
 
 /* ══ PLATFORM DETECTION ══*/
@@ -1159,6 +1201,7 @@ async function resolveHighlightContext(){
         if(hlInfoR.ok){
           var hlInfo=await hlInfoR.json();
           if(hlInfo.width&&hlInfo.height){ctx.cW=hlInfo.width;ctx.cH=hlInfo.height;}
+          applyInfoProfile(ctx,hlInfo);
         }
       }catch(e){/* keep canvas dims */}
     }
@@ -1172,6 +1215,7 @@ async function resolveHighlightContext(){
         var info=await infoR.json();
         if(info.width) ctx.cW=info.width;
         if(info.height) ctx.cH=info.height;
+        applyInfoProfile(ctx,info);
       }
     }catch(e){/* fall through with defaults */}
   } else {
@@ -1245,6 +1289,7 @@ async function initHighlight(){
   }
   var m=ctx.m, cvs=ctx.cvs, idx=ctx.idx, canvas=ctx.canvas, canvasId=ctx.canvasId, manifestId=ctx.manifestId;
   var mLabel=ctx.mLabel, cLabel=ctx.cLabel, cW=ctx.cW, cH=ctx.cH, svcBase=ctx.svcBase;
+  var level0=!!ctx.level0, sizeWidths=ctx.sizeWidths||[];
 
   var region='full',rx=0,ry=0,rw=cW,rh=cH;
   if(pXywh){
@@ -1287,12 +1332,38 @@ async function initHighlight(){
       el.sizes='(max-width:620px) calc(100vw - 4rem), 442px';
     }
   }
+  // Level 0: the service can't crop or free-scale. Request the WHOLE page
+  // (region 'full'/'max') at one of the discrete widths it advertises in
+  // `sizes`, snapping to the nearest available. Both panels show the full
+  // page; the selected region is still conveyed by the overlay rect on the
+  // context panel, and the notice below explains the limitation.
+  function panelSrcL0(el,targetW){
+    var w=snapWidth(sizeWidths,targetW);
+    var reg=fullSizeParam(svcBase); // 'full' (v2) or 'max' (v3)
+    // No `sizes` advertised: fall back to the plain full-region request. Some
+    // level-0 services still answer /full/full (or /full/max) even without it.
+    el.src=w?iiifUrl(svcBase,'full',w+','):iiifUrl(svcBase,'full',reg);
+  }
   if(proxy){
+    // Worker-supplied URLs — already level-0-aware (full page at a snapped
+    // width when the service can't crop).
     $('cropImg').src=proxy.crop;
     $('ctxImg').src=proxy.ctx;
+  } else if(level0){
+    panelSrcL0($('cropImg'),800);
+    panelSrcL0($('ctxImg'),600);
   } else {
     panelSrc($('cropImg'),pXywh?region:'full',pXywh?rw:cW,800);
     panelSrc($('ctxImg'),'full',cW,600);
+  }
+  // Whenever the source is level 0 (proxied or not), the "crop" panel actually
+  // shows the whole page, so give it the page aspect ratio (avoids a squashed
+  // placeholder / layout shift) and relabel it. The region is conveyed by the
+  // overlay rect on the context panel.
+  if(level0 && pXywh){
+    $('cropImg').width=cW;$('cropImg').height=cH;
+    $('cropImg').alt='Full page (selected region highlighted in the context view)';
+    $('cropPanelLabel').textContent='Page (region highlighted at right →)';
   }
 
   // hlRect applied after show('highlightMode') below
@@ -1325,12 +1396,37 @@ async function initHighlight(){
     $('hlTheseusLink').style.display='none';
   }
 
-  // Full resolution crop — region at max quality, opens as plain image
-  var fullResUrl=pXywh
-    ?iiifUrl(svcBase,region,fullSizeParam(svcBase))
-    :iiifUrl(svcBase,'full',fullSizeParam(svcBase));
+  // Full resolution crop — region at max quality, opens as plain image.
+  // Level 0 can't crop, so this necessarily links the full page instead.
+  var fullResUrl;
+  if(level0){
+    var l0w=snapWidth(sizeWidths,cW); // largest available width, capped at page width
+    fullResUrl=l0w?iiifUrl(svcBase,'full',l0w+','):iiifUrl(svcBase,'full',fullSizeParam(svcBase));
+    $('hlFullResBtn').textContent='Full resolution page ↓';
+  } else {
+    fullResUrl=pXywh
+      ?iiifUrl(svcBase,region,fullSizeParam(svcBase))
+      :iiifUrl(svcBase,'full',fullSizeParam(svcBase));
+    if(!pXywh) $('hlFullResBtn').textContent='Full resolution page ↓';
+  }
   $('hlFullResBtn').dataset.url=fullResUrl;
-  if(!pXywh) $('hlFullResBtn').textContent='Full resolution page ↓';
+
+  // Level-0 notice — explain why the preview shows the whole page rather than a
+  // server-cropped region, and (if we snapped) at what size.
+  var notice=$('hlNotice');
+  if(level0){
+    var widthNote=sizeWidths.length
+      ? ' Previews use the nearest size it publishes ('+sizeWidths.join(', ')+' px wide).'
+      : ' It also doesn’t advertise preset sizes, so the full-page request may still fail on some servers.';
+    notice.innerHTML='<b>Level 0 image source.</b> This IIIF service serves only pre-generated tiles. '
+      +'It can’t crop an arbitrary region or resize on demand, so '+(pXywh
+        ?'the panels show the <b>whole page</b> and your selection is marked by the highlight box in the context view.'
+        :'the preview shows the <b>whole page</b> at its published size.')+esc(widthNote)
+      +' Deep-zoom and sharing still work normally.';
+    notice.hidden=false;
+  } else {
+    notice.hidden=true;
+  }
 
   show('highlightMode');
 
