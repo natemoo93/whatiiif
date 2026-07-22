@@ -242,10 +242,11 @@ footer a:hover{color:var(--ink)}
       </div>
     </details>
     <p class="input-hint" style="margin-top:.3rem">
-  Try it with one of these sample items:
+  Try a sample:
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://digital.library.illinoisstate.edu/digital/collection/p15990coll5/id/5179/rec/1';onUrlInput();">ISU Circus Route Book (CONTENTdm)</a> ·
   <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://cudl.lib.cam.ac.uk/view/MS-DAR-00030-00001';onUrlInput();">Darwin's Zoological Diary (Cambridge)</a>
 · <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('urlInput').value='https://collections.library.yale.edu/catalog/33338891';onUrlInput();">La végétation sous-marine (Yale)</a>
+· <a href="#" style="color:var(--accent)" onclick="event.preventDefault();loadRandomSample(this);">Random (Europeana)</a>
   </p>
  <div class="page-nav" id="pageNav" style="display:none">
       <button type="button" class="btn" aria-label="Previous page" onclick="goPage(-1)">&#8592;</button>
@@ -1139,6 +1140,29 @@ window.onUrlInput=function(){
   } else {
     el.textContent='Platform not recognized — will try as a manifest URL';
     el.className='detected-platform';
+  }
+};
+
+// Pulls a random Europeana IIIF manifest into the input. Deliberately does not
+// load it — the user still clicks Load.
+window.loadRandomSample=async function(link){
+  if(link.dataset.busy) return;
+  link.dataset.busy='1';
+  var original=link.textContent;
+  link.textContent='finding one…';
+  try{
+    var r=await fetch('/api/random-manifest');
+    if(!r.ok) throw new Error('lookup failed');
+    var d=await r.json();
+    if(!d.url) throw new Error('no manifest');
+    $('urlInput').value=d.url;
+    onUrlInput();
+    link.textContent=original;
+  }catch(e){
+    link.textContent="Couldn't find one, try again";
+    setTimeout(function(){ link.textContent=original; },3000);
+  }finally{
+    delete link.dataset.busy;
   }
 };
 
