@@ -1651,11 +1651,13 @@ function buildCitation(ctx){
   var title=(ctx.mLabel||'').trim();
   var date=citeYear(citeMetaFind(pairs,['date of creation','date created','date issued','creation','created','issued','date','year'])||getLabel(m.navDate));
 
-  // Page/part designation: the user's own label wins, then the canvas label,
-  // then the canvas index. Bare numbers get a "p." prefix.
+  // Page/part designation: the institution's canvas label, else the canvas
+  // index. Bare numbers get a "p." prefix. Deliberately NOT the user's ?label=
+  // — that's their own annotation of the region, not bibliographic data from
+  // the source, so it has no place in a citation.
   var page='';
   if(ctx.cvs&&ctx.cvs.length>1){
-    var cl=(pLabel||ctx.cLabel||'').trim();
+    var cl=(ctx.cLabel||'').trim();
     if(/^[\[\(]?\s*(seq\.?|n|img|image)\s*\d+\s*[\]\)]?$/i.test(cl)) cl='';
     if(!cl) page='canvas '+(ctx.idx+1);
     else if(/^\d+$/.test(cl)) page='p. '+cl;
