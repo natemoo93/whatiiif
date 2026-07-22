@@ -134,7 +134,9 @@ details[open] .refine-summary::after{content:' ↑'}
 .mv{color:var(--ink-mid);word-break:break-all}
 .mv a{color:var(--accent);text-decoration:underline}
 /* cite dialog — native <dialog>, so Esc/backdrop/focus-trap come free */
-#citeDialog{border:1px solid var(--ink);background:var(--paper);color:var(--ink);padding:0;max-width:min(560px,calc(100vw - 2rem));width:100%}
+/* Centered via inset:0 + margin:auto rather than the UA default (which only
+   centers horizontally, and not at all once an explicit width is set). */
+#citeDialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 2rem));max-height:calc(100vh - 4rem);overflow:auto;border:1px solid var(--ink);background:var(--paper);color:var(--ink);padding:0}
 #citeDialog::backdrop{background:rgba(26,24,20,.55)}
 .cite-head{display:flex;align-items:baseline;gap:1rem;border-bottom:1px solid var(--rule);padding:1rem 1.25rem .8rem}
 .cite-head h2{font-family:var(--serif);font-size:1.05rem;font-weight:300;letter-spacing:.06em;text-transform:uppercase;flex:1}
@@ -1702,6 +1704,10 @@ function buildCitation(ctx){
 // Whichever Cite button opened the dialog — highlight mode or the embed
 // attribution bar — is where focus returns on close.
 var citeOpener=null;
+function restoreCiteFocus(){
+  if(citeOpener&&citeOpener.focus) citeOpener.focus();
+  citeOpener=null;
+}
 window.openCite=function(){
   var dlg=$('citeDialog'); if(!dlg) return;
   citeOpener=document.activeElement;
@@ -1710,11 +1716,33 @@ window.openCite=function(){
   if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
   announce('Citation dialog opened.');
 };
+/* Click outside the box closes it. The ::backdrop isn't a separate element —
+   clicks on it target the <dialog> itself — so compare against the content
+   box. Bound once, on mousedown+mouseup, so a drag that starts inside (e.g.
+   selecting the citation) and releases outside doesn't count as an outside
+   click. */
+(function(){
+  var dlg=$('citeDialog'); if(!dlg) return;
+  var downOutside=false;
+  function isOutside(e){
+    var r=dlg.getBoundingClientRect();
+    // A click on the dialog's own padding/scrollbar still counts as inside.
+    return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;
+  }
+  dlg.addEventListener('mousedown',function(e){ downOutside=(e.target===dlg)&&isOutside(e); });
+  dlg.addEventListener('mouseup',function(e){
+    if(downOutside&&e.target===dlg&&isOutside(e)) window.closeCite();
+    downOutside=false;
+  });
+  // Esc (and any other native close) must still restore focus to the opener.
+  dlg.addEventListener('close',restoreCiteFocus);
+})();
 window.closeCite=function(){
   var dlg=$('citeDialog'); if(!dlg) return;
-  if(dlg.close) dlg.close(); else dlg.removeAttribute('open');
-  if(citeOpener&&citeOpener.focus) citeOpener.focus();
-  citeOpener=null;
+  // Focus returns to the opener in the 'close' handler, which also covers Esc
+  // and the click-outside path.
+  if(dlg.close) dlg.close();
+  else { dlg.removeAttribute('open'); restoreCiteFocus(); } // no <dialog> support: no 'close' event
 };
 window.copyCitation=function(){
   // copyText resets the label to "Copy"; this button says more than that.
