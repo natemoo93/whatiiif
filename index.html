@@ -342,7 +342,7 @@ footer a:hover{color:var(--ink)}
         <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
       </div>
       <div>
-        <p class="panel-label">In context — page <span id="hlPageNum">—</span></p>
+        <p class="panel-label">In context — <span id="hlPageNum">—</span></p>
         <div class="ctx-wrap">
           <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
           <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
@@ -1386,7 +1386,8 @@ async function initHighlight(){
   $('hlNote').textContent=pXywh
     ?'Region '+region+(cvs.length?' — canvas '+(idx+1)+' of '+cvs.length:'')
     :(cvs.length?'Canvas '+(idx+1)+' of '+cvs.length:'');
-  $('hlPageNum').textContent=idx+1;
+  // Match the highlight-mode page dropdown's option text exactly (buildSelect).
+  $('hlPageNum').textContent='Canvas '+(idx+1)+(cLabel?' — '+cLabel.slice(0,50):'');
 
   // Use Worker-proxied URLs if available (solves CORS), otherwise direct IIIF.
   // Never request wider than the region itself: upscaling makes some servers
