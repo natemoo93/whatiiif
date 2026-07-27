@@ -536,10 +536,42 @@ function infoSizes(info){
     .map(function(s){return {w:s.width,h:s.height};})
     .sort(function(a,b){return a.w-b.w;});
 }
-// Attach level-0 status + published sizes to the highlight context.
+// Output-size ceilings a service advertises (Image API `maxWidth`/`maxHeight`/
+// `maxArea`). These cap the SIZE OF THE RETURNED IMAGE, not the source: a
+// server may hold a 54MP master and still refuse to render more than 10MP of
+// it. Cantaloupe enforces this strictly — Courtauld's 8164x6662 service
+// advertises maxArea 10000000 and 403s ("requested pixel area exceeds the
+// maximum threshold") for any wider request, which broke the context panel
+// because it asked for the canvas's full 8164px width. Verified live 2026-07-27.
+function infoCaps(info){
+  if(!info) return null;
+  var c={};
+  if(typeof info.maxWidth==='number'&&info.maxWidth>0) c.maxWidth=info.maxWidth;
+  if(typeof info.maxHeight==='number'&&info.maxHeight>0) c.maxHeight=info.maxHeight;
+  if(typeof info.maxArea==='number'&&info.maxArea>0) c.maxArea=info.maxArea;
+  return (c.maxWidth||c.maxHeight||c.maxArea)?c:null;
+}
+/* Largest width <= `w` that satisfies every advertised ceiling, preserving the
+   w:h aspect ratio. Returns `w` unchanged when nothing is advertised, so
+   services without limits behave exactly as before. `h` may be 0/unknown, in
+   which case only maxWidth can be applied. */
+function capWidth(w,h,caps){
+  if(!caps||!(w>0)) return w;
+  var out=w;
+  if(caps.maxWidth) out=Math.min(out,caps.maxWidth);
+  if(h>0){
+    var ar=w/h;
+    if(caps.maxHeight) out=Math.min(out,Math.floor(caps.maxHeight*ar));
+    // area = width * (width/ar)  =>  width = sqrt(area * ar)
+    if(caps.maxArea) out=Math.min(out,Math.floor(Math.sqrt(caps.maxArea*ar)));
+  }
+  return Math.max(1,Math.floor(out));
+}
+// Attach level-0 status + published sizes + output-size caps to the context.
 function applyInfoProfile(ctx,info){
   ctx.level0=iiifLevel0(info);
   ctx.sizes=infoSizes(info);
+  ctx.caps=infoCaps(info);
 }
 // Smallest published size with width >= want; else the largest. Returns the
 // exact size string ("w,h" when height is known, else "w,").
@@ -1375,7 +1407,7 @@ async function initHighlight(){
   }
   var m=ctx.m, cvs=ctx.cvs, idx=ctx.idx, canvas=ctx.canvas, canvasId=ctx.canvasId, manifestId=ctx.manifestId;
   var mLabel=ctx.mLabel, cLabel=ctx.cLabel, cW=ctx.cW, cH=ctx.cH, svcBase=ctx.svcBase;
-  var level0=!!ctx.level0, l0sizes=ctx.sizes||[];
+  var level0=!!ctx.level0, l0sizes=ctx.sizes||[], caps=ctx.caps||null;
   // Level-0 client-side crop state, filled in asynchronously by renderLevel0Crop.
   var level0CropDataUrl=null, level0CropFailed=false;
 
@@ -1411,7 +1443,10 @@ async function initHighlight(){
   // srcset lets the browser fetch the smallest sufficient size for the
   // ~442px panel (or full-width on phones) at its own devicePixelRatio,
   // instead of always paying for the 800px derivative.
-  function panelSrc(el,reg,maxW,cap){
+  function panelSrc(el,reg,maxW,cap,natH){
+    // Clamp to what the service will actually render. Without this, asking for
+    // the region's native width 403s on area-limited servers (see infoCaps).
+    maxW=capWidth(maxW,natH||0,caps);
     var full=Math.min(cap,maxW);
     el.src=iiifUrl(svcBase,reg,full+',');
     var widths=[Math.ceil(cap/2),cap].filter(function(w){return w<=maxW;});
@@ -1498,8 +1533,8 @@ async function initHighlight(){
       $('cropImg').src=(proxy&&proxy.crop)||l0PageUrl(800);
     }
   } else {
-    panelSrc($('cropImg'),pXywh?region:'full',pXywh?rw:cW,800);
-    panelSrc($('ctxImg'),'full',cW,600);
+    panelSrc($('cropImg'),pXywh?region:'full',pXywh?rw:cW,800,pXywh?rh:cH);
+    panelSrc($('ctxImg'),'full',cW,600,cH);
   }
 
   // hlRect applied after show('highlightMode') below
