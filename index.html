@@ -2364,17 +2364,42 @@ function loadOSD(canvas){
     showErr('Could not load the image viewer library. Check your connection and try again.');
   });
 }
+/* Given a URL string, OpenSeadragon fetches info.json itself and then builds
+   every tile URL from the `id`/`@id` INSIDE that document. Servers behind a
+   reverse proxy often advertise their internal address there — Courtauld
+   returns "http://172.35.4.216:8182/iiif/3/133338" — so OSD requests tiles
+   from an unroutable host and paints solid black: info.json loads fine, the
+   `open` event fires, no error is raised, and every tile silently fails.
+   Fetching it ourselves and overriding the id with the URL we actually reached
+   keeps tiles on the public host. Verified live 2026-07-27. */
+function normalizeTileSource(info,base){
+  if(!info||typeof info!=='object') return info;
+  var out={},k;
+  for(k in info) if(Object.prototype.hasOwnProperty.call(info,k)) out[k]=info[k];
+  // v3 uses `id`, v2 `@id`. Rewrite whichever is present, and only when it
+  // actually disagrees with the URL that served the document.
+  if(typeof out.id==='string') out.id=base;
+  if(typeof out['@id']==='string') out['@id']=base;
+  return out;
+}
 function loadOSDNow(canvas){
   var base=getServiceBase(canvas);
   if(!base){ showErr('No image service found for this canvas.'); return; }
+  base=base.replace(/\/+$/,'');
   var ts=base+'/info.json';
   show('osdWrap');
   if(viewer){viewer.destroy();viewer=null;}
   if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
+  // Hand OSD the parsed+corrected document when we can fetch it; fall back to
+  // the plain URL (OSD fetches it itself) if the fetch fails, so a CORS-blocked
+  // info.json behaves exactly as it did before.
+  var pending=fetch(ts,{headers:{'Accept':'application/json, application/ld+json'}})
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(info){ return info?normalizeTileSource(info,base):ts; })
+    .catch(function(){ return ts; });
   viewer=OpenSeadragon({
     id:'osdEl',
     prefixUrl:'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/images/',
-    tileSources:ts,
     showNavigationControl:true,
     showNavigator:true,
     navigatorPosition:'BOTTOM_RIGHT',
@@ -2394,6 +2419,10 @@ function loadOSDNow(canvas){
   // outages), leaving OSD stuck loading forever — bail out after a timeout.
   osdWatchdog=setTimeout(function(){ osdFailed('osd-open-timeout'); },IA_TIMEOUT_MS+4000);
   viewer.addHandler('open-failed',function(){ osdFailed('osd-open-failed'); });
+  // Open only now that the watchdog and open-failed handler are attached, so a
+  // fast failure is still reported rather than racing past them.
+  var openingViewer=viewer;
+  pending.then(function(src){ if(viewer===openingViewer) viewer.open(src); });
   viewer.addHandler('open',function(){
     if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
     hide('stateMsg');
