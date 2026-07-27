@@ -475,13 +475,22 @@ function fullSizeParam(svcBase){
   return (svcBase&&svcBase.includes('/iiif/3/'))?'max':'full';
 }
 
+/* Recovers the service base from an image URL when the manifest omits a
+   `service` block (legal, and common in minimal v3 manifests — e.g. Courtauld).
+   An Image API URL always ends {region}/{size}/{rotation}/{quality}.{format},
+   so strip exactly those four segments. Anchoring on that tail is what makes
+   this unambiguous: the previous pattern matched forward on `full|[\d,]+` with
+   a greedy `(.+)`, so ".../133338/full/max/0/default.jpg" kept "/full/max" in
+   the base and every derived URL 404'd (doubled "full/max/full/max"). */
+var IMG_API_TAIL=/^(.+?)\/[^\/]+\/[^\/]+\/[^\/]+\/[^\/]+\.[a-z]+$/i;
+
 function getServiceBase(canvas){
   if(canvas.images&&canvas.images[0]){
     var res=canvas.images[0].resource||{};
     var svc=res.service;
     if(svc){ var id=svc['@id']||svc.id; if(typeof id==='string'&&id) return id.replace(/\/+$/,''); }
     var rid=res['@id']||res.id||'';
-    var m=rid.match(/^(.+)\/(?:full|[\d,]+)\//);
+    var m=rid.match(IMG_API_TAIL);
     if(m) return m[1];
     return rid.replace(/\/+$/,'');
   }
@@ -490,7 +499,7 @@ function getServiceBase(canvas){
     var s=Array.isArray(body.service)?body.service[0]:body.service;
     if(s){ var sid=s['@id']||s.id; if(typeof sid==='string'&&sid) return sid.replace(/\/+$/,''); }
     var bid=body.id||body['@id']||'';
-    var m2=bid.match(/^(.+)\/(?:full|[\d,]+)\//);
+    var m2=bid.match(IMG_API_TAIL);
     if(m2) return m2[1];
     return bid.replace(/\/+$/,'');
   }
