@@ -912,7 +912,6 @@ var PLATFORMS=[
 var PLATFORM_LINKS = {
   'Harvard Digital Collections': 'https://curiosity.lib.harvard.edu/',
   'Library of Congress': 'https://www.loc.gov/collections/',
-  'Biodiversity Heritage Library': 'https://www.biodiversitylibrary.org/browse',
   'Smithsonian Libraries': 'https://library.si.edu/digital-library',
   'Yale Library': 'https://collections.library.yale.edu/',
   'Cambridge Digital Library': 'https://cudl.lib.cam.ac.uk/',
@@ -933,7 +932,11 @@ var EXTRA_INSTITUTIONS = [
   PLATFORMS.forEach(function(p){
     // Harvard CURIOSity stays detectable but is folded into the single
     // Harvard Digital Collections list entry (which links to CURIOSity)
-    if(p.name==='Direct manifest URL'||p.name==='IIIF viewer link'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity'||p.name==='Illinois State University (Circus Route Books)') return;
+    // Biodiversity Heritage Library: handler kept (it still resolves if the
+    // page read succeeds) but hidden from the list — BHL now 403s the
+    // Worker's spoofed UA, so /manifest-proxy page reads fail and detection
+    // is unreliable. Same treatment as Internet Archive's flaky service.
+    if(p.name==='Direct manifest URL'||p.name==='IIIF viewer link'||p.name==='CONTENTdm'||p.name==='Internet Archive'||p.name==='Harvard CURIOSity'||p.name==='Illinois State University (Circus Route Books)'||p.name==='Biodiversity Heritage Library') return;
     if(seen[p.name]) return;
     seen[p.name]=true;
     entries.push({name:p.name,url:PLATFORM_LINKS[p.name]||null});
@@ -2051,7 +2054,7 @@ async function loadManifest(url,jumpTo){
   return true;
 }
 
-var IA_TIMEOUT_MS = 8000;
+var IA_TIMEOUT_MS = 15000;
 
 function isIAManifest(url) {
   return /iiif\.archive\.org/.test(url);
@@ -2066,11 +2069,13 @@ async function fetchManifest(url, quiet) {
     var timeoutErr = new Error('__TIMEOUT__');
     timeoutErr.isTimeout = true;
     var timeoutPromise = new Promise(function(_, reject) {
-      // `|| 8000` guards first-load: initHighlight() runs during script
+      // `|| 15000` guards first-load: initHighlight() runs during script
       // evaluation, before the var IA_TIMEOUT_MS assignment below executes —
       // hoisting makes it undefined there, and setTimeout(fn, undefined)
       // fires instantly, killing every highlight-page manifest fetch.
-      setTimeout(function() { reject(timeoutErr); }, IA_TIMEOUT_MS || 8000);
+      // Keep this literal in sync with IA_TIMEOUT_MS: on the highlight path
+      // it IS the effective timeout, so a stale value silently caps it.
+      setTimeout(function() { reject(timeoutErr); }, IA_TIMEOUT_MS || 15000);
     });
     try {
       var r = await Promise.race([fetch(fetchUrl), timeoutPromise]);
