@@ -234,6 +234,10 @@ footer a:hover{color:var(--ink)}
       <input type="url" id="urlInput" placeholder="https://…" oninput="onUrlInput()">
       <button type="button" class="btn is-accent" onclick="handleLoad()">Load</button>
     </div>
+    <p class="input-hint" style="margin-top:.35rem">
+      Difficulty loading a manifest?
+      <a href="https://github.com/natemoo93/Sniiiffer" target="_blank" rel="noopener" style="color:var(--accent)">Try the Sniiiffer beta</a>
+    </p>
     <div class="detected-platform" id="detectedPlatform" role="status" aria-live="polite"></div>
     <details class="refine-details" style="margin-bottom:.5rem">
       <summary class="refine-summary">Auto-detect Supported institutions</summary>
@@ -959,7 +963,7 @@ var EXTRA_INSTITUTIONS = [
   var li=document.createElement('li');
   li.style.color='var(--ink-faint)';
   li.style.fontSize='.72rem';
-  li.textContent='✓ Any CONTENTdm-hosted institution';
+  li.textContent='✓ CONTENTdm-hosted institution';
   list.appendChild(li);
   var reqLi=document.createElement('li');
   reqLi.style.marginTop='.4rem';
