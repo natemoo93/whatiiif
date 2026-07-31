@@ -77,6 +77,20 @@ main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
 .mode-toggle span{font-size:.72rem;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase}
 .toggle-btn{font-size:.72rem;padding:.35rem .8rem;min-height:24px;border:1px solid var(--rule-ui);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .12s}
 .toggle-btn.is-active{border-color:var(--ink);color:var(--ink);background:var(--paper-warm)}
+/* Spread row: facing-page preview beside the interactive viewer. The viewer
+   keeps all the width it had (flex:1) so selection behaviour is unchanged; the
+   facing page is a fixed-proportion sidecar. Hidden on narrow screens, where
+   splitting 600px of height two ways helps nobody. */
+.osd-spread{display:flex;gap:6px;align-items:stretch}
+.osd-spread .osd-wrap{flex:1 1 auto;min-width:0}
+.facing-page[hidden]{display:none!important}
+.facing-page{flex:0 0 30%;max-width:30%;padding:0;border:1px solid var(--rule);
+  background:#111;overflow:hidden;height:600px;cursor:pointer;position:relative}
+.facing-page img{width:100%;height:100%;object-fit:contain;opacity:.62;
+  transition:opacity .15s ease;display:block}
+.facing-page:hover img,.facing-page:focus-visible img{opacity:.9}
+.facing-page:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:700px){.facing-page{display:none}}
 .osd-wrap{position:relative;border:1px solid var(--rule);background:#111;overflow:hidden;height:600px;cursor:crosshair}
 #osdEl{width:100%;height:100%}
 #selSvg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
@@ -128,6 +142,19 @@ details[open] .refine-summary::after{content:' ↑'}
 .panel-img{display:block;width:100%;height:auto;border:1px solid var(--rule);background:var(--paper-warm);min-height:80px}
 .ctx-wrap{position:relative}
 .ctx-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+/* Spread: facing page beside the selected one on a paged manifest. align-items
+   flex-start keeps the two pages top-aligned when their heights differ (paired
+   scans rarely match exactly). Falls back to a single centred page when the
+   facing img is hidden. The facing page is dimmed slightly so the page holding
+   the selection stays the visual subject. */
+/* Rotation controls for the selection tool (viewer mode). The rotation itself
+   is OpenSeadragon's — see rotateViewer() — not a CSS transform, so no styles
+   here touch the image. */
+.rotate-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.6rem 0 0}
+.rotate-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.rotate-val{font-size:.8rem;color:var(--ink-faint);min-width:2.6rem;font-variant-numeric:tabular-nums}
+.rotate-note{font-size:.72rem;color:var(--ink-faint);font-style:italic}
+.btn.is-small{padding:.25rem .6rem;min-height:28px;font-size:.95rem;line-height:1}
 .meta-block{border-top:1px solid var(--rule);padding-top:1.25rem;margin-top:1.25rem}
 .meta-row{display:flex;gap:1rem;padding:.4rem 0;border-bottom:.5px solid var(--rule);font-size:.8rem}
 .mk{width:100px;flex-shrink:0;font-size:.65rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
@@ -263,13 +290,31 @@ footer a:hover{color:var(--ink)}
       <button type="button" class="toggle-btn is-active" id="btnSelect" onclick="setMode('select')">&#9633; Select region</button>
       <button type="button" class="toggle-btn" id="btnPan" onclick="setMode('pan')">&#10021; Pan / zoom</button>
     </div>
-    <div class="osd-wrap" id="osdWrap" style="display:none">
-      <div id="osdEl" role="region" aria-label="Deep-zoom image viewer"></div>
-      <svg id="selSvg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect id="selRect" x="0" y="0" width="0" height="0"
-          fill="rgba(173,255,47,0.28)" stroke="#65a30d" stroke-width="1.5"
-          stroke-dasharray="5,3" vector-effect="non-scaling-stroke"/>
-      </svg>
+    <div class="rotate-row" id="rotateRow" style="display:none">
+      <span class="rotate-label">Rotate</span>
+      <button type="button" class="btn is-small" onclick="rotateViewer(-90)" title="Rotate left" aria-label="Rotate left">&#8634;</button>
+      <button type="button" class="btn is-small" onclick="rotateViewer(90)" title="Rotate right" aria-label="Rotate right">&#8635;</button>
+      <span class="rotate-val" id="rotVal">0&#176;</span>
+      <span class="rotate-note">View only &mdash; coordinates stay in the page&rsquo;s own orientation</span>
+    </div>
+    <!-- Spread row. The facing page is a flat preview OUTSIDE #osdWrap on
+         purpose: wrapOffset() measures drags against osdWrap's bounding box and
+         toImgCoords maps them through the viewport's PRIMARY image, so anything
+         inside that box that isn't the selected canvas would yield coordinates
+         in the wrong page's pixel space. Clicking it pages there instead. -->
+    <div class="osd-spread" id="osdSpread" style="display:none">
+      <button type="button" class="facing-page" id="osdFacingBefore" hidden
+        title="Go to this page"><img alt="Facing page"></button>
+      <div class="osd-wrap" id="osdWrap" style="display:none">
+        <div id="osdEl" role="region" aria-label="Deep-zoom image viewer"></div>
+        <svg id="selSvg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect id="selRect" x="0" y="0" width="0" height="0"
+            fill="rgba(173,255,47,0.28)" stroke="#65a30d" stroke-width="1.5"
+            stroke-dasharray="5,3" vector-effect="non-scaling-stroke"/>
+        </svg>
+      </div>
+      <button type="button" class="facing-page" id="osdFacingAfter" hidden
+        title="Go to this page"><img alt="Facing page"></button>
     </div>
     <div class="sel-panel" id="selPanel" style="display:none">
       <p class="sel-panel-head">Selected region</p>
@@ -347,6 +392,9 @@ footer a:hover{color:var(--ink)}
       </div>
       <div>
         <p class="panel-label">In context — <span id="hlPageNum">—</span></p>
+        <!-- Only ever the canvas the selection lives in. No facing page here:
+             xywh is in this canvas's pixel space, so anything else beside it is
+             a second coordinate space the overlay rect does not describe. -->
         <div class="ctx-wrap">
           <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
           <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
@@ -474,6 +522,52 @@ function getCanvases(m){
   if(m.sequences&&m.sequences[0]) return m.sequences[0].canvases||[];
   return m.items||[];
 }
+
+/* ── two-page spreads ──
+   A bound volume is displayed two pages at a time. IIIF says so with
+   behavior:"paged" (v3) or viewingHint:"paged" (v2) — we do NOT infer it:
+   single-sheet material (maps, photographs, broadsides) is multi-canvas too,
+   and pairing those is wrong.
+
+   Pairing is from the Presentation API: the first canvas stands alone (cover /
+   first recto), then canvases pair 1-2, 3-4, 5-6. A canvas may opt out with its
+   own behavior:"non-paged", which is how already-two-up scans (fold-outs) are
+   marked — /ia-manifest sets that on landscape pages it measured.
+
+   DISPLAY ONLY. A selection's xywh lives in one canvas's own pixel space, and
+   paired canvases do not share dimensions (measured on real scans: 6545 vs
+   6538 high in one pair, none matching exactly). There is no shared coordinate
+   space for a spread, so a box is always stored against a single canvas.
+   Spreads change what the user SEES, never what gets recorded.
+   Keep in sync with Sniiiffer detect.js. */
+function isPagedManifest(m){
+  if(!m) return false;
+  var b=m.behavior||m.viewingHint;
+  var arr=Array.isArray(b)?b:[b];
+  return arr.indexOf('paged')!==-1;
+}
+function isNonPagedCanvas(c){
+  if(!c) return false;
+  var b=c.behavior||c.viewingHint;
+  var arr=Array.isArray(b)?b:[b];
+  return arr.indexOf('non-paged')!==-1||arr.indexOf('facing-pages')!==-1;
+}
+/* The spread containing canvas `idx`, as indices in display order. Always
+   returns an array (single-element when pairing doesn't apply) so callers can
+   treat every view as "a list of canvases to show" without branching. */
+function spreadFor(m,idx,canvases){
+  var cvs=canvases||getCanvases(m);
+  if(!cvs.length) return [];
+  var i=Math.max(0,Math.min(idx|0,cvs.length-1));
+  if(!isPagedManifest(m)) return [i];
+  if(i===0) return [0];
+  if(isNonPagedCanvas(cvs[i])) return [i];
+  var left=(i%2===1)?i:i-1;
+  var right=left+1;
+  if(right>=cvs.length) return [left];
+  if(isNonPagedCanvas(cvs[left])||isNonPagedCanvas(cvs[right])) return [i];
+  return (m.viewingDirection==='right-to-left')?[right,left]:[left,right];
+}
 function fullSizeParam(svcBase){
   // IIIF v3 servers use 'max' instead of 'full' for full resolution
   return (svcBase&&svcBase.includes('/iiif/3/'))?'max':'full';
@@ -587,6 +681,12 @@ function snapSize(sizes,want){
 }
 
 /* ══ PLATFORM DETECTION ══*/
+
+/* BookReader path keywords that follow /details/{item} directly. Anything else
+   in that position is a file name inside a multi-file item. Keep in sync with
+   Sniiiffer detect.js. */
+var IA_READER_SEGMENTS=/^(?:page|mode|search|theater|1up|2up|thumb|fullscreen)$/i;
+
 var PLATFORMS=[
 
   // Viewer share links (Theseus, Mirador, UV, whatiiif itself) — any URL
@@ -657,13 +757,27 @@ var PLATFORMS=[
     }
   },
 
-  // Internet Archive
+  /* Internet Archive.
+     /details/{item} is the normal case. /details/{item}/{file} names one work
+     inside a MULTI-FILE item (a single item can bundle dozens of issues of one
+     periodical as separate file sets), and for those IA's item manifest is
+     internally inconsistent — verified 2026-07-30 on a 30-issue item: its label
+     described the whole collection, all 102 canvases came from one issue, and
+     rendering/seeAlso named a third file.
+     Using it produces a confident highlight of the WRONG work. /ia-manifest
+     synthesizes a correct one from the Image API; see the Worker for details.
+     Reader keywords (/page/, /mode/, …) follow the item directly and are not
+     file names. Keep in sync with Sniiiffer detect.js. */
   {
     name:'Internet Archive',
-    pattern:/archive\.org\/details\/([^\/\?]+)/,
+    pattern:/archive\.org\/details\/([^\/\?#]+)/,
     toManifest:function(url){
-      var m=url.match(/archive\.org\/details\/([^\/\?#]+)/);
+      var m=url.match(/archive\.org\/details\/([^\/\?#]+)(?:\/([^\/\?#]+))?/);
       if(!m) return null;
+      var seg2=m[2]?decodeURIComponent(m[2]):'';
+      if(seg2&&!IA_READER_SEGMENTS.test(seg2)){
+        return '/ia-manifest?item='+encodeURIComponent(m[1])+'&file='+encodeURIComponent(seg2);
+      }
       return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
     }
   },
@@ -1435,7 +1549,11 @@ async function initHighlight(){
     ?'Region '+region+(cvs.length?' — canvas '+(idx+1)+' of '+cvs.length:'')
     :(cvs.length?'Canvas '+(idx+1)+' of '+cvs.length:'');
   // Match the highlight-mode page dropdown's option text exactly (buildSelect).
-  $('hlPageNum').textContent='Canvas '+(idx+1)+(cLabel?' — '+cLabel.slice(0,50):'');
+  /* Suppress a label that just repeats the canvas number — many manifests
+     (including /ia-manifest) label canvases "1", "2", … which rendered as
+     "Canvas 8 — 8". */
+  var cLabelShown=(cLabel&&cLabel.trim()!==String(idx+1))?cLabel:'';
+  $('hlPageNum').textContent='Canvas '+(idx+1)+(cLabelShown?' — '+cLabelShown.slice(0,50):'');
 
   // Use Worker-proxied URLs if available (solves CORS), otherwise direct IIIF.
   // Never request wider than the region itself: upscaling makes some servers
@@ -2061,7 +2179,9 @@ async function loadManifest(url,jumpTo){
 var IA_TIMEOUT_MS = 15000;
 
 function isIAManifest(url) {
-  return /iiif\.archive\.org/.test(url);
+  // /ia-manifest is our own route, but it fetches archive.org server-side, so
+  // it inherits IA's latency and deserves the IA-specific timeout message.
+  return /iiif\.archive\.org/.test(url) || /^\/ia-manifest\?/.test(url);
 }
 
 /* quiet: suppress /log-error reporting — used by heuristicResolve probes,
@@ -2101,8 +2221,11 @@ async function fetchManifest(url, quiet) {
            'Please try again in a few minutes.';
   }
 
-  // Already a proxy URL — fetch directly
-  if (url.startsWith('/manifest-proxy')) {
+  // Already a same-origin Worker route (proxy, or the IA multi-file manifest
+  // synthesizer) — fetch directly. The /manifest-proxy fallback below would
+  // wrap the relative URL as ?url=%2Fia-manifest…, which the proxy can't
+  // resolve, turning a clean upstream error into a confusing one.
+  if (url.startsWith('/manifest-proxy') || url.startsWith('/ia-manifest')) {
     try {
       var data = await doFetch(url);
       return { ok: true, data: data };
@@ -2367,6 +2490,33 @@ function showPageLink(){
 }
 window.goPage=function(d){ gotoPage(currentIdx+d); };
 
+/* Facing-page preview beside the viewer, on paged manifests only.
+   Deliberately NOT a second OSD tile source: viewportToImageCoordinates maps
+   through the viewport's primary image, so a drag over a second source would
+   return coordinates in the wrong canvas's pixel space and mint a plausible
+   but wrong xywh. This is a flat image; clicking it pages there, at which
+   point it becomes the selected canvas and is fully drawable. */
+function renderOsdFacingPage(){
+  var before=$('osdFacingBefore'), after=$('osdFacingAfter');
+  before.hidden=true; after.hidden=true;
+  try{
+    var pair=spreadFor(manifest||{},currentIdx,canvases);
+    if(pair.length<2) return;
+    var otherIdx=(pair[0]===currentIdx)?pair[1]:pair[0];
+    var other=canvases[otherIdx];
+    if(!other) return;
+    var oBase=getServiceBase(other);
+    if(!oBase) return;
+    var target=(pair[0]===otherIdx)?before:after;
+    var img=target.querySelector('img');
+    img.src=iiifUrl(oBase.replace(/\/+$/,''),'full','500,');
+    img.alt='Facing page '+(otherIdx+1)+' — click to open';
+    target.title='Go to page '+(otherIdx+1);
+    target.onclick=function(){ gotoPage(otherIdx); };
+    target.hidden=false;
+  }catch(e){/* cosmetic only — leave the single-page view */}
+}
+
 var osdWatchdog=null;
 function loadOSD(canvas){
   ensureOSD().then(function(){ loadOSDNow(canvas); },function(){
@@ -2397,6 +2547,8 @@ function loadOSDNow(canvas){
   base=base.replace(/\/+$/,'');
   var ts=base+'/info.json';
   show('osdWrap');
+  $('osdSpread').style.display='flex';
+  renderOsdFacingPage();
   if(viewer){viewer.destroy();viewer=null;}
   if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
   // Hand OSD the parsed+corrected document when we can fetch it; fall back to
@@ -2419,6 +2571,7 @@ function loadOSDNow(canvas){
   function osdFailed(reason){
     if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
     hide('osdWrap');
+    $('osdSpread').style.display='none';
     showErr(isIAManifest(ts)
       ?'Internet Archive appears to be slow or unavailable right now. This item\'s images are hosted on archive.org, which is outside our control. Please try again in a few minutes.'
       :'Could not load the image for this page. The image server may be down or blocking cross-origin requests.');
@@ -2436,6 +2589,13 @@ function loadOSDNow(canvas){
     if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
     hide('stateMsg');
     show('osdWrap');
+    $('osdSpread').style.display='flex';
+    // Each canvas opens unrotated: rotation is a per-page viewing aid, and a
+    // carried-over angle would silently apply to a page the user never turned.
+    viewerRot=0;
+    if(viewer.viewport) viewer.viewport.setRotation(0);
+    $('rotVal').textContent='0°';
+    $('rotateRow').style.display='flex';
     var c=viewer.canvas;
     c.addEventListener('mousedown',onDragStart);
     c.addEventListener('mousemove',onDragMove);
@@ -2449,6 +2609,12 @@ function loadOSDNow(canvas){
   // Update selection coordinates live as the viewer pans or zooms
   viewer.addHandler('viewport-change',function(){
     if(!selState) return;
+    /* While rotated, the on-screen rect is an axis-aligned HULL of the real
+       selection, not the selection itself — reading coordinates back out of it
+       would grow the region a little on every pan or zoom. selState is already
+       correct and orientation-independent, so keep it and just re-place the
+       rect. Unrotated, the rect is exact and the original read-back applies. */
+    if(viewerRot){ redrawSelRect(); return; }
     // Recalculate image coords from current screen position of the rect
     var r=$('selRect');
     var rx1=parseFloat(r.getAttribute('x'));
@@ -2488,6 +2654,33 @@ function applyMouseMode(){
   $('osdWrap').style.cursor=mouseMode==='pan'?'grab':'crosshair';
 }
 
+/* ── rotation (selection tool) ──
+   Uses OpenSeadragon's own viewport rotation, NOT a CSS transform. That matters
+   for correctness, not just tidiness: pointFromPixel un-rotates by
+   -getRotation() around the viewport centre, and viewportToImageCoordinates
+   then works against _contentBoundsNoRotate. So toImgCoords already returns
+   coordinates in the canvas's unrotated pixel space at any angle, and the
+   selection math below needs no rotation-aware changes at all. A CSS transform
+   would have broken exactly that, because getBoundingClientRect reports the
+   axis-aligned box after transform.
+   Rotation is therefore a pure view aid: xywh, the share link, the Content
+   State token and the OG preview are identical whichever way the page is
+   turned. */
+var viewerRot=0;
+window.rotateViewer=function(delta){
+  if(!viewer||!viewer.viewport) return;
+  viewerRot=((viewerRot+delta)%360+360)%360;
+  viewer.viewport.setRotation(viewerRot);
+  var v=$('rotVal');
+  if(v) v.textContent=viewerRot+'°';
+  /* Redraw the selection rect from selState. The viewport-change handler
+     recomputes selState FROM the on-screen rect, and that rect is axis-aligned
+     while the image turns underneath it — left alone, a rotation would silently
+     rewrite a saved region into a different one. Redrawing from selState makes
+     the stored coordinates authoritative and the rect follow the page. */
+  if(selState) redrawSelRect();
+};
+
 function wrapOffset(cx,cy){
   var r=$('osdWrap').getBoundingClientRect();
   return {x:cx-r.left,y:cy-r.top};
@@ -2511,8 +2704,18 @@ function drawRect(a,b){
 }
 function finalize(a,b){
   if(Math.abs(b.x-a.x)<5||Math.abs(b.y-a.y)<5){clearSel();return;}
-  var p1=toImgCoords(Math.min(a.x,b.x),Math.min(a.y,b.y));
-  var p2=toImgCoords(Math.max(a.x,b.x),Math.max(a.y,b.y));
+  /* Project all FOUR corners of the dragged screen box and take their hull in
+     image space. Converting only the screen min/max corners assumed the first
+     stays top-left after conversion, which is false once the viewport is
+     rotated: at 180° it becomes bottom-right, so rw/rh came out negative and
+     the selection was silently discarded. Min/max over four points is correct
+     at every angle and identical to the old result at 0°. */
+  var x1=Math.min(a.x,b.x), y1=Math.min(a.y,b.y);
+  var x2=Math.max(a.x,b.x), y2=Math.max(a.y,b.y);
+  var pts=[toImgCoords(x1,y1),toImgCoords(x2,y1),toImgCoords(x2,y2),toImgCoords(x1,y2)];
+  var ixs=pts.map(function(p){return p.x;}), iys=pts.map(function(p){return p.y;});
+  var p1={x:Math.min.apply(null,ixs),y:Math.min.apply(null,iys)};
+  var p2={x:Math.max.apply(null,ixs),y:Math.max.apply(null,iys)};
   var canvas=canvases[currentIdx];
   var dims=getCanvasDimensions(canvas);var cW=dims.cW,cH=dims.cH;
   var rx=Math.max(0,Math.round(p1.x));
@@ -2571,18 +2774,33 @@ window.applyRatio=function(ratio){
   redrawSelRect();
 };
 
+/* Screen-space rect for the current selState, honouring pan, zoom AND rotation.
+   All FOUR corners are projected, not just two: viewportToViewerElementCoordinates
+   applies the viewport rotation, so at 90/270 the top-left and bottom-right
+   corners swap sides and a two-corner box collapses or inverts — that is why a
+   selection vanished on a rotated canvas. The axis-aligned hull of the four
+   projected corners is the box the SVG rect can draw; at quarter turns it is
+   exactly the rotated selection, so nothing grows. */
 function redrawSelRect(){
-  if(!viewer) return;
+  if(!viewer||!viewer.viewport||!selState) return;
   var vp=viewer.viewport;
-  var p1=vp.imageToViewportCoordinates(new OpenSeadragon.Point(selState.rx,selState.ry));
-  var p2=vp.imageToViewportCoordinates(new OpenSeadragon.Point(selState.rx+selState.rw,selState.ry+selState.rh));
-  var sp1=vp.viewportToViewerElementCoordinates(p1);
-  var sp2=vp.viewportToViewerElementCoordinates(p2);
+  var pts=[
+    [selState.rx,selState.ry],
+    [selState.rx+selState.rw,selState.ry],
+    [selState.rx+selState.rw,selState.ry+selState.rh],
+    [selState.rx,selState.ry+selState.rh]
+  ].map(function(c){
+    return vp.viewportToViewerElementCoordinates(
+      vp.imageToViewportCoordinates(new OpenSeadragon.Point(c[0],c[1])));
+  });
+  var xs=pts.map(function(p){return p.x;}), ys=pts.map(function(p){return p.y;});
+  var x1=Math.min.apply(null,xs), y1=Math.min.apply(null,ys);
+  var x2=Math.max.apply(null,xs), y2=Math.max.apply(null,ys);
   var r=$('selRect');
-  r.setAttribute('x',Math.min(sp1.x,sp2.x));
-  r.setAttribute('y',Math.min(sp1.y,sp2.y));
-  r.setAttribute('width',Math.abs(sp2.x-sp1.x));
-  r.setAttribute('height',Math.abs(sp2.y-sp1.y));
+  r.setAttribute('x',x1);
+  r.setAttribute('y',y1);
+  r.setAttribute('width',Math.max(0,x2-x1));
+  r.setAttribute('height',Math.max(0,y2-y1));
 }
 
 window.updateUrl=function(){
