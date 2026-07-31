@@ -587,12 +587,6 @@ function snapSize(sizes,want){
 }
 
 /* ══ PLATFORM DETECTION ══*/
-
-/* BookReader path keywords that follow /details/{item} directly. Anything else
-   in that position is a file name inside a multi-file item. Keep in sync with
-   Sniiiffer detect.js. */
-var IA_READER_SEGMENTS=/^(?:page|mode|search|theater|1up|2up|thumb|fullscreen)$/i;
-
 var PLATFORMS=[
 
   // Viewer share links (Theseus, Mirador, UV, whatiiif itself) — any URL
@@ -663,27 +657,13 @@ var PLATFORMS=[
     }
   },
 
-  /* Internet Archive.
-     /details/{item} is the normal case. /details/{item}/{file} names one work
-     inside a MULTI-FILE item (a single item can bundle dozens of issues of one
-     periodical as separate file sets), and for those IA's item manifest is
-     internally inconsistent — verified 2026-07-30 on a 30-issue item: its label
-     described the whole collection, all 102 canvases came from one issue, and
-     rendering/seeAlso named a third file.
-     Using it produces a confident highlight of the WRONG work. /ia-manifest
-     synthesizes a correct one from the Image API; see the Worker for details.
-     Reader keywords (/page/, /mode/, …) follow the item directly and are not
-     file names. Keep in sync with Sniiiffer detect.js. */
+  // Internet Archive
   {
     name:'Internet Archive',
-    pattern:/archive\.org\/details\/([^\/\?#]+)/,
+    pattern:/archive\.org\/details\/([^\/\?]+)/,
     toManifest:function(url){
-      var m=url.match(/archive\.org\/details\/([^\/\?#]+)(?:\/([^\/\?#]+))?/);
+      var m=url.match(/archive\.org\/details\/([^\/\?#]+)/);
       if(!m) return null;
-      var seg2=m[2]?decodeURIComponent(m[2]):'';
-      if(seg2&&!IA_READER_SEGMENTS.test(seg2)){
-        return '/ia-manifest?item='+encodeURIComponent(m[1])+'&file='+encodeURIComponent(seg2);
-      }
       return 'https://iiif.archive.org/iiif/'+m[1]+'/manifest.json';
     }
   },
@@ -2081,9 +2061,7 @@ async function loadManifest(url,jumpTo){
 var IA_TIMEOUT_MS = 15000;
 
 function isIAManifest(url) {
-  // /ia-manifest is our own route, but it fetches archive.org server-side, so
-  // it inherits IA's latency and deserves the IA-specific timeout message.
-  return /iiif\.archive\.org/.test(url) || /^\/ia-manifest\?/.test(url);
+  return /iiif\.archive\.org/.test(url);
 }
 
 /* quiet: suppress /log-error reporting — used by heuristicResolve probes,
@@ -2123,11 +2101,8 @@ async function fetchManifest(url, quiet) {
            'Please try again in a few minutes.';
   }
 
-  // Already a same-origin Worker route (proxy, or the IA multi-file manifest
-  // synthesizer) — fetch directly. The /manifest-proxy fallback below would
-  // wrap the relative URL as ?url=%2Fia-manifest…, which the proxy can't
-  // resolve, turning a clean upstream error into a confusing one.
-  if (url.startsWith('/manifest-proxy') || url.startsWith('/ia-manifest')) {
+  // Already a proxy URL — fetch directly
+  if (url.startsWith('/manifest-proxy')) {
     try {
       var data = await doFetch(url);
       return { ok: true, data: data };
