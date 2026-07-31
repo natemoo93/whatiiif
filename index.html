@@ -77,6 +77,19 @@ main{flex:1;max-width:980px;width:100%;margin:0 auto;padding:2rem 2rem 4rem}
 .mode-toggle span{font-size:.72rem;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase}
 .toggle-btn{font-size:.72rem;padding:.35rem .8rem;min-height:24px;border:1px solid var(--rule-ui);background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .12s}
 .toggle-btn.is-active{border-color:var(--ink);color:var(--ink);background:var(--paper-warm)}
+/* Spread row: facing-page preview beside the interactive viewer. The viewer
+   keeps all the width it had (flex:1) so selection behaviour is unchanged; the
+   facing page is a fixed-proportion sidecar. Hidden on narrow screens, where
+   splitting 600px of height two ways helps nobody. */
+.osd-spread{display:flex;gap:6px;align-items:stretch}
+.osd-spread .osd-wrap{flex:1 1 auto;min-width:0}
+.facing-page{flex:0 0 30%;max-width:30%;padding:0;border:1px solid var(--rule);
+  background:#111;overflow:hidden;height:600px;cursor:pointer;position:relative}
+.facing-page img{width:100%;height:100%;object-fit:contain;opacity:.62;
+  transition:opacity .15s ease;display:block}
+.facing-page:hover img,.facing-page:focus-visible img{opacity:.9}
+.facing-page:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:700px){.facing-page{display:none}}
 .osd-wrap{position:relative;border:1px solid var(--rule);background:#111;overflow:hidden;height:600px;cursor:crosshair}
 #osdEl{width:100%;height:100%}
 #selSvg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
@@ -128,6 +141,15 @@ details[open] .refine-summary::after{content:' ↑'}
 .panel-img{display:block;width:100%;height:auto;border:1px solid var(--rule);background:var(--paper-warm);min-height:80px}
 .ctx-wrap{position:relative}
 .ctx-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+/* Spread: facing page beside the selected one on a paged manifest. align-items
+   flex-start keeps the two pages top-aligned when their heights differ (paired
+   scans rarely match exactly). Falls back to a single centred page when the
+   facing img is hidden. The facing page is dimmed slightly so the page holding
+   the selection stays the visual subject. */
+.ctx-spread{display:flex;gap:6px;align-items:flex-start}
+.ctx-spread .ctx-wrap{flex:1 1 auto;min-width:0}
+.ctx-facing{flex:1 1 auto;min-width:0;opacity:.72}
+@media(max-width:560px){.ctx-facing{display:none}}
 .meta-block{border-top:1px solid var(--rule);padding-top:1.25rem;margin-top:1.25rem}
 .meta-row{display:flex;gap:1rem;padding:.4rem 0;border-bottom:.5px solid var(--rule);font-size:.8rem}
 .mk{width:100px;flex-shrink:0;font-size:.65rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
@@ -263,13 +285,24 @@ footer a:hover{color:var(--ink)}
       <button type="button" class="toggle-btn is-active" id="btnSelect" onclick="setMode('select')">&#9633; Select region</button>
       <button type="button" class="toggle-btn" id="btnPan" onclick="setMode('pan')">&#10021; Pan / zoom</button>
     </div>
-    <div class="osd-wrap" id="osdWrap" style="display:none">
-      <div id="osdEl" role="region" aria-label="Deep-zoom image viewer"></div>
-      <svg id="selSvg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect id="selRect" x="0" y="0" width="0" height="0"
-          fill="rgba(173,255,47,0.28)" stroke="#65a30d" stroke-width="1.5"
-          stroke-dasharray="5,3" vector-effect="non-scaling-stroke"/>
-      </svg>
+    <!-- Spread row. The facing page is a flat preview OUTSIDE #osdWrap on
+         purpose: wrapOffset() measures drags against osdWrap's bounding box and
+         toImgCoords maps them through the viewport's PRIMARY image, so anything
+         inside that box that isn't the selected canvas would yield coordinates
+         in the wrong page's pixel space. Clicking it pages there instead. -->
+    <div class="osd-spread" id="osdSpread" style="display:none">
+      <button type="button" class="facing-page" id="osdFacingBefore" hidden
+        title="Go to this page"><img alt="Facing page"></button>
+      <div class="osd-wrap" id="osdWrap" style="display:none">
+        <div id="osdEl" role="region" aria-label="Deep-zoom image viewer"></div>
+        <svg id="selSvg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect id="selRect" x="0" y="0" width="0" height="0"
+            fill="rgba(173,255,47,0.28)" stroke="#65a30d" stroke-width="1.5"
+            stroke-dasharray="5,3" vector-effect="non-scaling-stroke"/>
+        </svg>
+      </div>
+      <button type="button" class="facing-page" id="osdFacingAfter" hidden
+        title="Go to this page"><img alt="Facing page"></button>
     </div>
     <div class="sel-panel" id="selPanel" style="display:none">
       <p class="sel-panel-head">Selected region</p>
@@ -347,13 +380,21 @@ footer a:hover{color:var(--ink)}
       </div>
       <div>
         <p class="panel-label">In context — <span id="hlPageNum">—</span></p>
-        <div class="ctx-wrap">
-          <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
-          <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-            <rect id="hlRect" x="0" y="0" width="0" height="0"
-              fill="rgba(173,255,47,0.32)" stroke="#65a30d" stroke-width="0.008"
-              vector-effect="non-scaling-stroke"/>
-          </svg>
+        <!-- Spread view: the facing page sits beside the selected one when the
+             manifest is paged. Order is set at render time (right-to-left
+             manifests put the facing page first). Only the selected page
+             carries the overlay — xywh is in ITS pixel space alone. -->
+        <div class="ctx-spread" id="ctxSpread">
+          <img class="panel-img ctx-facing" id="ctxFacingBefore" alt="" hidden>
+          <div class="ctx-wrap">
+            <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
+            <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+              <rect id="hlRect" x="0" y="0" width="0" height="0"
+                fill="rgba(173,255,47,0.32)" stroke="#65a30d" stroke-width="0.008"
+                vector-effect="non-scaling-stroke"/>
+            </svg>
+          </div>
+          <img class="panel-img ctx-facing" id="ctxFacingAfter" alt="" hidden>
         </div>
       </div>
     </div>
@@ -473,6 +514,52 @@ function getLabel(raw){
 function getCanvases(m){
   if(m.sequences&&m.sequences[0]) return m.sequences[0].canvases||[];
   return m.items||[];
+}
+
+/* ── two-page spreads ──
+   A bound volume is displayed two pages at a time. IIIF says so with
+   behavior:"paged" (v3) or viewingHint:"paged" (v2) — we do NOT infer it:
+   single-sheet material (maps, photographs, broadsides) is multi-canvas too,
+   and pairing those is wrong.
+
+   Pairing is from the Presentation API: the first canvas stands alone (cover /
+   first recto), then canvases pair 1-2, 3-4, 5-6. A canvas may opt out with its
+   own behavior:"non-paged", which is how already-two-up scans (fold-outs) are
+   marked — /ia-manifest sets that on landscape pages it measured.
+
+   DISPLAY ONLY. A selection's xywh lives in one canvas's own pixel space, and
+   paired canvases do not share dimensions (measured on real scans: 6545 vs
+   6538 high in one pair, none matching exactly). There is no shared coordinate
+   space for a spread, so a box is always stored against a single canvas.
+   Spreads change what the user SEES, never what gets recorded.
+   Keep in sync with Sniiiffer detect.js. */
+function isPagedManifest(m){
+  if(!m) return false;
+  var b=m.behavior||m.viewingHint;
+  var arr=Array.isArray(b)?b:[b];
+  return arr.indexOf('paged')!==-1;
+}
+function isNonPagedCanvas(c){
+  if(!c) return false;
+  var b=c.behavior||c.viewingHint;
+  var arr=Array.isArray(b)?b:[b];
+  return arr.indexOf('non-paged')!==-1||arr.indexOf('facing-pages')!==-1;
+}
+/* The spread containing canvas `idx`, as indices in display order. Always
+   returns an array (single-element when pairing doesn't apply) so callers can
+   treat every view as "a list of canvases to show" without branching. */
+function spreadFor(m,idx,canvases){
+  var cvs=canvases||getCanvases(m);
+  if(!cvs.length) return [];
+  var i=Math.max(0,Math.min(idx|0,cvs.length-1));
+  if(!isPagedManifest(m)) return [i];
+  if(i===0) return [0];
+  if(isNonPagedCanvas(cvs[i])) return [i];
+  var left=(i%2===1)?i:i-1;
+  var right=left+1;
+  if(right>=cvs.length) return [left];
+  if(isNonPagedCanvas(cvs[left])||isNonPagedCanvas(cvs[right])) return [i];
+  return (m.viewingDirection==='right-to-left')?[right,left]:[left,right];
 }
 function fullSizeParam(svcBase){
   // IIIF v3 servers use 'max' instead of 'full' for full resolution
@@ -1566,6 +1653,35 @@ async function initHighlight(){
 
   // hlRect applied after show('highlightMode') below
 
+  /* Facing page, when the manifest is paged. Display only: the overlay rect
+     stays on ctxImg, because xywh is in the selected canvas's pixel space and
+     the two pages don't share one. Failure here is cosmetic, so anything that
+     goes wrong just leaves the single-page view in place. */
+  (function renderFacingPage(){
+    var before=$('ctxFacingBefore'), after=$('ctxFacingAfter');
+    before.hidden=true; after.hidden=true;
+    before.removeAttribute('src'); after.removeAttribute('src');
+    try{
+      var allCvs=cvs&&cvs.length?cvs:getCanvases(m||{});
+      var pair=spreadFor(m||{},idx,allCvs);
+      if(pair.length<2) return;
+      var otherIdx=(pair[0]===idx)?pair[1]:pair[0];
+      var other=allCvs[otherIdx];
+      if(!other) return;
+      // NOT panelSrc(): that closes over the SELECTED canvas's svcBase and
+      // would render this page as a duplicate of the one beside it.
+      var oBase=getServiceBase(other);
+      if(!oBase) return;
+      var oDim=getCanvasDimensions(other);
+      var w=Math.min(600,oDim.w||600);
+      // Slot: whichever side the facing page sits on in display order.
+      var target=(pair[0]===otherIdx)?before:after;
+      target.src=iiifUrl(oBase,'full',w+',');
+      target.alt='Facing page';
+      target.hidden=false;
+    }catch(e){/* cosmetic only — leave the single-page view */}
+  })();
+
   var meta=$('hlMeta');
   function row(k,v){var d=document.createElement('div');d.className='meta-row';d.innerHTML='<span class="mk">'+k+'</span><span class="mv">'+v+'</span>';meta.appendChild(d);}
   if(mLabel) row('Document',esc(mLabel));
@@ -2392,6 +2508,33 @@ function showPageLink(){
 }
 window.goPage=function(d){ gotoPage(currentIdx+d); };
 
+/* Facing-page preview beside the viewer, on paged manifests only.
+   Deliberately NOT a second OSD tile source: viewportToImageCoordinates maps
+   through the viewport's primary image, so a drag over a second source would
+   return coordinates in the wrong canvas's pixel space and mint a plausible
+   but wrong xywh. This is a flat image; clicking it pages there, at which
+   point it becomes the selected canvas and is fully drawable. */
+function renderOsdFacingPage(){
+  var before=$('osdFacingBefore'), after=$('osdFacingAfter');
+  before.hidden=true; after.hidden=true;
+  try{
+    var pair=spreadFor(manifest||{},currentIdx,canvases);
+    if(pair.length<2) return;
+    var otherIdx=(pair[0]===currentIdx)?pair[1]:pair[0];
+    var other=canvases[otherIdx];
+    if(!other) return;
+    var oBase=getServiceBase(other);
+    if(!oBase) return;
+    var target=(pair[0]===otherIdx)?before:after;
+    var img=target.querySelector('img');
+    img.src=iiifUrl(oBase.replace(/\/+$/,''),'full','500,');
+    img.alt='Facing page '+(otherIdx+1)+' — click to open';
+    target.title='Go to page '+(otherIdx+1);
+    target.onclick=function(){ gotoPage(otherIdx); };
+    target.hidden=false;
+  }catch(e){/* cosmetic only — leave the single-page view */}
+}
+
 var osdWatchdog=null;
 function loadOSD(canvas){
   ensureOSD().then(function(){ loadOSDNow(canvas); },function(){
@@ -2422,6 +2565,8 @@ function loadOSDNow(canvas){
   base=base.replace(/\/+$/,'');
   var ts=base+'/info.json';
   show('osdWrap');
+  $('osdSpread').style.display='flex';
+  renderOsdFacingPage();
   if(viewer){viewer.destroy();viewer=null;}
   if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
   // Hand OSD the parsed+corrected document when we can fetch it; fall back to
@@ -2444,6 +2589,7 @@ function loadOSDNow(canvas){
   function osdFailed(reason){
     if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
     hide('osdWrap');
+    $('osdSpread').style.display='none';
     showErr(isIAManifest(ts)
       ?'Internet Archive appears to be slow or unavailable right now. This item\'s images are hosted on archive.org, which is outside our control. Please try again in a few minutes.'
       :'Could not load the image for this page. The image server may be down or blocking cross-origin requests.');
@@ -2461,6 +2607,7 @@ function loadOSDNow(canvas){
     if(osdWatchdog){clearTimeout(osdWatchdog);osdWatchdog=null;}
     hide('stateMsg');
     show('osdWrap');
+    $('osdSpread').style.display='flex';
     var c=viewer.canvas;
     c.addEventListener('mousedown',onDragStart);
     c.addEventListener('mousemove',onDragMove);
