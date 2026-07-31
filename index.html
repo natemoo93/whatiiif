@@ -146,6 +146,25 @@ details[open] .refine-summary::after{content:' ↑'}
    scans rarely match exactly). Falls back to a single centred page when the
    facing img is hidden. The facing page is dimmed slightly so the page holding
    the selection stays the visual subject. */
+/* ── rotation (view only) ──
+   The rect overlay is a sibling of the image inside .ctx-wrap and both are
+   sized to the same box, so rotating the WRAP keeps the highlight glued to the
+   page instead of needing its own transform. At 90/270 the element's visual
+   footprint has its width and height swapped, but layout still reserves the
+   unrotated box — the aspect-ratio swap on the parent compensates so the row
+   doesn't overlap its neighbours. */
+.rotate-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.85rem 0 0}
+.rotate-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.rotate-val{font-size:.8rem;color:var(--ink-faint);min-width:2.6rem;font-variant-numeric:tabular-nums}
+.rotate-note{font-size:.72rem;color:var(--ink-faint);font-style:italic}
+.btn.is-small{padding:.25rem .6rem;min-height:28px;font-size:.95rem;line-height:1}
+[data-rot="90"] .rot-target{transform:rotate(90deg)}
+[data-rot="180"] .rot-target{transform:rotate(180deg)}
+[data-rot="270"] .rot-target{transform:rotate(270deg)}
+.rot-target{transform-origin:center center;transition:transform .18s ease}
+/* Quarter turns swap the footprint; give the slot the inverse ratio so the
+   rotated image still fits its column. */
+[data-rot="90"] .rot-slot,[data-rot="270"] .rot-slot{display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ctx-spread{display:flex;gap:6px;align-items:flex-start}
 .ctx-spread .ctx-wrap{flex:1 1 auto;min-width:0}
 .ctx-facing{flex:1 1 auto;min-width:0;opacity:.72}
@@ -376,7 +395,9 @@ footer a:hover{color:var(--ink)}
     <div class="image-panel">
       <div>
         <p class="panel-label" id="cropPanelLabel">Selected region</p>
-        <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
+        <div class="rot-slot">
+          <img class="panel-img rot-target" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
+        </div>
       </div>
       <div>
         <p class="panel-label">In context — <span id="hlPageNum">—</span></p>
@@ -384,9 +405,12 @@ footer a:hover{color:var(--ink)}
              manifest is paged. Order is set at render time (right-to-left
              manifests put the facing page first). Only the selected page
              carries the overlay — xywh is in ITS pixel space alone. -->
-        <div class="ctx-spread" id="ctxSpread">
-          <img class="panel-img ctx-facing" id="ctxFacingBefore" alt="" hidden>
-          <div class="ctx-wrap">
+        <div class="ctx-spread rot-slot" id="ctxSpread">
+          <img class="panel-img ctx-facing rot-target" id="ctxFacingBefore" alt="" hidden>
+          <!-- The wrap rotates, not the img: the overlay rect is its sibling and
+               shares the same box, so one transform moves page and highlight
+               together and the rect needs no compensating math. -->
+          <div class="ctx-wrap rot-target">
             <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
             <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
               <rect id="hlRect" x="0" y="0" width="0" height="0"
@@ -394,9 +418,16 @@ footer a:hover{color:var(--ink)}
                 vector-effect="non-scaling-stroke"/>
             </svg>
           </div>
-          <img class="panel-img ctx-facing" id="ctxFacingAfter" alt="" hidden>
+          <img class="panel-img ctx-facing rot-target" id="ctxFacingAfter" alt="" hidden>
         </div>
       </div>
+    </div>
+    <div class="rotate-row">
+      <span class="rotate-label">Rotate view</span>
+      <button type="button" class="btn is-small" onclick="rotateHl(-90)" title="Rotate left" aria-label="Rotate left">↺</button>
+      <button type="button" class="btn is-small" onclick="rotateHl(90)" title="Rotate right" aria-label="Rotate right">↻</button>
+      <span class="rotate-val" id="hlRotVal">0°</span>
+      <span class="rotate-note">View only — the saved region is unchanged</span>
     </div>
     <div class="meta-block" id="hlMeta"></div>
     <div class="actions">
@@ -1204,6 +1235,19 @@ var pCanvas=parseInt(params.get('canvas')||'0',10);
 var pXywh=params.get('xywh');
 var pLabel=params.get('label');
 var pSvc=params.get('svc');
+/* Rotation is a VIEW preference, not part of the region. xywh always stays in
+   the canvas's own unrotated pixel space, so links without rot= behave exactly
+   as before and a rotated link's coordinates mean the same thing as an
+   unrotated one's. Display is a CSS transform: it works on level-0 services
+   (which can't rotate server-side) and costs no extra requests.
+   Normalized to 0/90/180/270 — anything else is ignored rather than trusted. */
+function normRot(v){
+  var n=parseInt(v||'0',10);
+  if(!isFinite(n)) return 0;
+  n=((n%360)+360)%360;
+  return (n===90||n===180||n===270)?n:0;
+}
+var pRot=normRot(params.get('rot'));
 
 /* IIIF Content State API 1.0 import — accept ?iiif-content= and map to our internal params */
 var pContentStateCanvasId=null; // set when content state gave us a canvas URI (resolved to index after manifest loads)
@@ -1756,6 +1800,9 @@ async function initHighlight(){
 
   show('highlightMode');
 
+  // Restore the orientation carried in ?rot= (no-op at 0°).
+  applyHlRot();
+
   // Apply highlight rect AFTER show() so SVG has non-zero layout dimensions.
   // Also re-apply on ctxImg onload in case the image load triggers a layout reflow.
   if(pXywh){
@@ -1768,6 +1815,37 @@ async function initHighlight(){
     $('ctxImg').onload=applyHlRect;
   }
 }
+
+/* ── rotation (highlight mode) ──
+   Applied by setting data-rot on #highlightMode; the CSS rules above do the
+   rest. Nothing here touches xywh, the crop request, the Content State token,
+   or the OG preview — a rotated view and an unrotated one describe the same
+   region, and a recipient of a rot= link sees the orientation the author chose
+   without the stored coordinates meaning anything different. */
+function applyHlRot(){
+  var sec=$('highlightMode');
+  if(!sec) return;
+  if(pRot) sec.setAttribute('data-rot',String(pRot));
+  else sec.removeAttribute('data-rot');
+  var v=$('hlRotVal');
+  if(v) v.textContent=pRot+'°';
+  // Keep the address bar and the share box in step, without a history entry
+  // per click (rotation is a view tweak, not navigation).
+  try{
+    var u=new URL(location.href);
+    if(pRot) u.searchParams.set('rot',String(pRot));
+    else u.searchParams.delete('rot');
+    history.replaceState(null,'',u.toString());
+    var share=$('hlShareUrl');
+    if(share) share.value=u.toString();
+    var embed=$('hlEmbedCode');
+    if(embed) embed.value=buildEmbedSnippet();
+  }catch(e){}
+}
+window.rotateHl=function(delta){
+  pRot=normRot(pRot+delta);
+  applyHlRot();
+};
 
 function showErr(msg){
   $('stateMsg').className='state is-err';
