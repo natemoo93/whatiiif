@@ -155,6 +155,42 @@ details[open] .refine-summary::after{content:' ↑'}
 .rotate-val{font-size:.8rem;color:var(--ink-faint);min-width:2.6rem;font-variant-numeric:tabular-nums}
 .rotate-note{font-size:.72rem;color:var(--ink-faint);font-style:italic}
 .btn.is-small{padding:.25rem .6rem;min-height:28px;font-size:.95rem;line-height:1}
+/* ── baked-in orientation on a share link (?rot=) ──
+   Presentational only. The transform goes on .ctx-wrap, not on #ctxImg: the SVG
+   highlight overlay is the img's sibling inside that wrap and is stretched to
+   the same box, so rotating the wrap moves page and highlight together and the
+   rect keeps its exact proportions relative to the page.
+
+   Sizing is the subtle part. A transform does NOT change layout, so a rotated
+   element keeps its unrotated footprint reserved while painting outside it —
+   that both clipped the page (an overflow:hidden slot cut the long edge off a
+   rotated portrait scan) and would let it overlap whatever follows.
+   At 90/270 the fix is to constrain the element by HEIGHT to the column width
+   instead of by width: rendered box becomes (colW*ratio) x colW, so the
+   rotated footprint is colW x (colW*ratio) and always fits horizontally at any
+   aspect ratio. aspect-ratio on the slot then reserves the correct height, so
+   nothing is clipped and nothing overlaps. Verified against portrait,
+   landscape, square and a 2.9:1 fold-out. */
+.rot-target{transform-origin:center center}
+[data-rot="90"] .rot-target{transform:rotate(90deg)}
+[data-rot="180"] .rot-target{transform:rotate(180deg)}
+[data-rot="270"] .rot-target{transform:rotate(270deg)}
+[data-rot="90"] .rot-slot,[data-rot="270"] .rot-slot{
+  display:flex;align-items:center;justify-content:center}
+/* At 90/270 applyRotSizing() sets the element's exact pixel box from the
+   image's NATURAL ratio, so the rotated footprint fits the column. max-width is
+   released because that box is intentionally wider than the column before
+   rotation. object-fit:contain is the safety net: both images carry explicit
+   width/height ATTRIBUTES (canvas pixel dimensions, as layout-shift hints), and
+   any box that disagrees with them would otherwise distort the pixels — that
+   was the stretched highlight. */
+[data-rot="90"] .rot-slot>.rot-target,[data-rot="270"] .rot-slot>.rot-target{max-width:none}
+/* Only an img INSIDE a rot-target wrap fills it (the context page). #cropImg is
+   itself the rot-target and is sized directly by applyRotSizing, so it must not
+   be matched here. */
+[data-rot="90"] .rot-target>img,[data-rot="270"] .rot-target>img{
+  width:100%;height:100%;object-fit:contain;max-width:none}
+[data-rot="90"] img.rot-target,[data-rot="270"] img.rot-target{object-fit:contain}
 .meta-block{border-top:1px solid var(--rule);padding-top:1.25rem;margin-top:1.25rem}
 .meta-row{display:flex;gap:1rem;padding:.4rem 0;border-bottom:.5px solid var(--rule);font-size:.8rem}
 .mk{width:100px;flex-shrink:0;font-size:.65rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
@@ -388,20 +424,27 @@ footer a:hover{color:var(--ink)}
     <div class="image-panel">
       <div>
         <p class="panel-label" id="cropPanelLabel">Selected region</p>
-        <img class="panel-img" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
+        <div class="rot-slot">
+          <img class="panel-img rot-target" id="cropImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" fetchpriority="high" alt="Highlighted region">
+        </div>
       </div>
       <div>
         <p class="panel-label">In context — <span id="hlPageNum">—</span></p>
         <!-- Only ever the canvas the selection lives in. No facing page here:
              xywh is in this canvas's pixel space, so anything else beside it is
              a second coordinate space the overlay rect does not describe. -->
-        <div class="ctx-wrap">
-          <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
-          <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-            <rect id="hlRect" x="0" y="0" width="0" height="0"
-              fill="rgba(173,255,47,0.32)" stroke="#65a30d" stroke-width="0.008"
-              vector-effect="non-scaling-stroke"/>
-          </svg>
+        <div class="rot-slot">
+          <!-- The wrap rotates, not the img: the overlay rect is its sibling
+               and shares the same box, so one transform moves page and
+               highlight together. -->
+          <div class="ctx-wrap rot-target">
+            <img class="panel-img" id="ctxImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Full page in context">
+            <svg class="ctx-overlay" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+              <rect id="hlRect" x="0" y="0" width="0" height="0"
+                fill="rgba(173,255,47,0.32)" stroke="#65a30d" stroke-width="0.008"
+                vector-effect="non-scaling-stroke"/>
+            </svg>
+          </div>
         </div>
       </div>
     </div>
@@ -1211,6 +1254,20 @@ var pCanvas=parseInt(params.get('canvas')||'0',10);
 var pXywh=params.get('xywh');
 var pLabel=params.get('label');
 var pSvc=params.get('svc');
+/* Orientation baked into a share link by whoever made it (whatiiif's viewer
+   mode or Sniiiffer). The landing page renders at this angle and offers NO
+   rotation controls — by the time a link exists the orientation is part of the
+   shared view, not a decision the recipient re-makes. Purely presentational:
+   xywh is always in the canvas's unrotated pixel space, so rot never changes
+   what region a link describes. Normalized to 0/90/180/270; anything else is
+   ignored rather than trusted. */
+function normRot(v){
+  var n=parseInt(v||'0',10);
+  if(!isFinite(n)) return 0;
+  n=((n%360)+360)%360;
+  return (n===90||n===180||n===270)?n:0;
+}
+var pRot=normRot(params.get('rot'));
 
 /* IIIF Content State API 1.0 import — accept ?iiif-content= and map to our internal params */
 var pContentStateCanvasId=null; // set when content state gave us a canvas URI (resolved to index after manifest loads)
@@ -1738,6 +1795,12 @@ async function initHighlight(){
 
   show('highlightMode');
 
+  /* Orientation carried in on the link. No controls here by design: the
+     recipient sees the view the author shared. No-op at 0°. */
+  if(pRot) $('highlightMode').setAttribute('data-rot',String(pRot));
+  else $('highlightMode').removeAttribute('data-rot');
+  applyRotSizing();
+
   // Apply highlight rect AFTER show() so SVG has non-zero layout dimensions.
   // Also re-apply on ctxImg onload in case the image load triggers a layout reflow.
   if(pXywh){
@@ -1750,6 +1813,51 @@ async function initHighlight(){
     $('ctxImg').onload=applyHlRect;
   }
 }
+
+/* Sizing support for ?rot= (see the .rot-slot rules).
+   A CSS transform leaves layout untouched, so at 90/270 two things need the
+   runtime: the rotated element must be constrained by HEIGHT to the column
+   width (--slot-w) so its rotated footprint fits, and the slot must reserve
+   the rotated height so the page below isn't overlapped. Both depend on the
+   column width and the image's aspect ratio, neither of which CSS can read.
+   No-op at 0/180, where layout and paint already agree. */
+function applyRotSizing(){
+  var clear=function(s){
+    s.style.removeProperty('--slot-w');
+    s.style.height='';
+    var t=s.querySelector('.rot-target')||s.querySelector('img');
+    if(t){ t.style.width=''; t.style.height=''; }
+  };
+  if(!pRot){ document.querySelectorAll('.rot-slot').forEach(clear); return; }
+  var quarter=(pRot===90||pRot===270);
+  document.querySelectorAll('.rot-slot').forEach(function(slot){
+    var w=slot.clientWidth;
+    if(!w) return;
+    slot.style.setProperty('--slot-w',w+'px');
+    // 180° keeps the unrotated footprint, so it needs no sizing help.
+    if(!quarter){ clear(slot); slot.style.setProperty('--slot-w',w+'px'); return; }
+    var img=slot.querySelector('img');
+    if(!img) return;
+    var setH=function(){
+      // naturalWidth/Height, not the width/height attributes: those are set from
+      // the CANVAS dimensions, which for the crop panel is the whole page rather
+      // than the cropped region, so they are the wrong ratio here.
+      var nw=img.naturalWidth, nh=img.naturalHeight;
+      if(!nw||!nh) return;
+      var ratio=nw/nh;
+      // Rendered box is (w*ratio) x w; the rotated footprint is w x (w*ratio),
+      // so reserve that height and pin the element's width to match its ratio.
+      var target=slot.querySelector('.rot-target')||img;
+      target.style.width=(w*ratio)+'px';
+      target.style.height=w+'px';
+      slot.style.height=(w*ratio)+'px';
+    };
+    setH();
+    img.addEventListener('load',setH);
+  });
+}
+// Column width changes with the viewport, and --slot-w is a pixel value.
+window.addEventListener('resize',function(){ if(pRot) applyRotSizing(); });
 
 function showErr(msg){
   $('stateMsg').className='state is-err';
@@ -1768,6 +1876,10 @@ window.switchToViewer=function(){
   if(pManifest){
     $('urlInput').value=pManifest;
     resolvedManifestUrl=pManifest;
+    // Carry the link's orientation into the editor so "edit this selection"
+    // opens the page the way the link showed it. Consumed once by the OSD
+    // 'open' handler, which otherwise resets every canvas to 0°.
+    pendingViewerRot=pRot;
     loadManifest(pManifest,pCanvas);
   }
 };
@@ -2590,11 +2702,15 @@ function loadOSDNow(canvas){
     hide('stateMsg');
     show('osdWrap');
     $('osdSpread').style.display='flex';
-    // Each canvas opens unrotated: rotation is a per-page viewing aid, and a
-    // carried-over angle would silently apply to a page the user never turned.
-    viewerRot=0;
-    if(viewer.viewport) viewer.viewport.setRotation(0);
-    $('rotVal').textContent='0°';
+    /* Each canvas opens unrotated: rotation is a per-page viewing aid, and a
+       carried-over angle would silently apply to a page the user never turned.
+       The exception is pendingViewerRot — a one-shot set by switchToViewer so a
+       rotated share link opens its editor at the same angle. Cleared on use so
+       it never leaks into the next page. */
+    viewerRot=pendingViewerRot||0;
+    pendingViewerRot=0;
+    if(viewer.viewport) viewer.viewport.setRotation(viewerRot);
+    $('rotVal').textContent=viewerRot+'°';
     $('rotateRow').style.display='flex';
     var c=viewer.canvas;
     c.addEventListener('mousedown',onDragStart);
@@ -2667,6 +2783,8 @@ function applyMouseMode(){
    State token and the OG preview are identical whichever way the page is
    turned. */
 var viewerRot=0;
+// One-shot handoff from a rotated share link into the editor; see switchToViewer.
+var pendingViewerRot=0;
 window.rotateViewer=function(delta){
   if(!viewer||!viewer.viewport) return;
   viewerRot=((viewerRot+delta)%360+360)%360;
@@ -2678,7 +2796,7 @@ window.rotateViewer=function(delta){
      while the image turns underneath it — left alone, a rotation would silently
      rewrite a saved region into a different one. Redrawing from selState makes
      the stored coordinates authoritative and the rect follow the page. */
-  if(selState) redrawSelRect();
+  if(selState){ redrawSelRect(); updateUrl(); }
 };
 
 function wrapOffset(cx,cy){
@@ -2813,6 +2931,11 @@ window.updateUrl=function(){
   var canvas=canvases[currentIdx];
   var svcBase=getServiceBase(canvas);
   if(svcBase) p.set('svc',svcBase);
+  /* Carry the orientation the author selected in. The landing page renders at
+     this angle but offers no controls: by the time a link exists the rotation
+     is a property of the shared view, not something the recipient re-decides.
+     Omitted at 0° so ordinary links are unchanged. */
+  if(viewerRot) p.set('rot',String(viewerRot));
   var url=location.origin+location.pathname+'?'+p.toString();
   $('generatedUrl').value=url;
   $('openHighlightBtn').href=url;
