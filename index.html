@@ -214,6 +214,10 @@ details[open] .refine-summary::after{content:' ↑'}
 .share-bar{margin-top:1.75rem;border-top:1px solid var(--rule);padding-top:1.1rem}
 .share-label{font-size:.68rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.4rem}
 .share-label a{text-decoration:underline}
+/* Format and size are separate rows sharing one layout so their buttons line
+   up on the same left edge. Size is a property of the iframe form only, so
+   #embSizeRow is hidden outright for the URL/Token forms. */
+.emb-row{display:flex;gap:.3rem;margin-bottom:.4rem}
 /* embed mode (/embed — framable, chromeless view) */
 /* Embeds stay light regardless of the night toggle: they sit inside other
    sites' pages and whatiiif's own chrome shouldn't leak into hosts' layouts.
@@ -461,15 +465,19 @@ footer a:hover{color:var(--ink)}
         <input class="url-box" id="hlShareUrl" readonly aria-label="Shareable link">
         <button type="button" class="copy-btn" id="hlCopyBtn" onclick="copyHlUrl()">Copy</button>
       </div>
-      <p class="share-label" style="margin-top:.75rem">Embed iframe
-        <span style="margin-left:.6rem">
-          <button type="button" class="ratio-btn emb-size" onclick="setEmbedSize(480,this)">Small</button>
-          <button type="button" class="ratio-btn emb-size is-active" onclick="setEmbedSize(640,this)">Medium</button>
-          <button type="button" class="ratio-btn emb-size" onclick="setEmbedSize(800,this)">Large</button>
-        </span>
-      </p>
+      <p class="share-label" style="margin-top:.75rem">Embed</p>
+      <div class="emb-row" role="group" aria-label="Embed format">
+        <button type="button" class="ratio-btn emb-fmt is-active" onclick="setEmbedFormat('iframe',this)">iframe</button>
+        <button type="button" class="ratio-btn emb-fmt" onclick="setEmbedFormat('url',this)">URL</button>
+        <button type="button" class="ratio-btn emb-fmt" onclick="setEmbedFormat('token',this)">Token</button>
+      </div>
+      <div class="emb-row" id="embSizeRow" role="group" aria-label="Embed size">
+        <button type="button" class="ratio-btn emb-size" onclick="setEmbedSize(480,this)">Small</button>
+        <button type="button" class="ratio-btn emb-size is-active" onclick="setEmbedSize(640,this)">Medium</button>
+        <button type="button" class="ratio-btn emb-size" onclick="setEmbedSize(800,this)">Large</button>
+      </div>
       <div class="url-row">
-        <input class="url-box" id="hlEmbedCode" style="font-size:.7rem" readonly aria-label="Embed iframe code">
+        <input class="url-box" id="hlEmbedCode" style="font-size:.7rem" readonly aria-label="Embed code">
         <button type="button" class="copy-btn" id="hlEmbedCopyBtn" onclick="copyHlEmbed()">Copy</button>
       </div>
       <p class="share-label" style="margin-top:.75rem"><a href="https://iiif.io/api/content-state/1.0/" target="_blank" rel="noopener" style="color:inherit">IIIF Content State</a> (paste into any compatible viewer, or <a id="hlTheseusLink" href="#" target="_blank" rel="noopener" style="color:inherit">open in Theseus ↗</a>)</p>
@@ -487,9 +495,9 @@ footer a:hover{color:var(--ink)}
       <button type="button" class="cite-close" onclick="closeCite()" aria-label="Close">&times;</button>
     </div>
     <div class="cite-body">
-      <p class="cite-style">Chicago (17th ed.) note form</p>
+      <p class="cite-style">Chicago (17th ed.) &mdash; note form</p>
       <p class="cite-text" id="citeText"></p>
-      <p class="cite-note">Generated from the IIIF manifest. Manifests vary in completeness. check names, dates, and the collection against the source record before using this.</p>
+      <p class="cite-note">Generated from the IIIF manifest. Manifests vary in completeness &mdash; check names, dates, and the collection against the source record before using this.</p>
       <div class="cite-actions">
         <button type="button" class="btn is-accent" id="citeCopyBtn" onclick="copyCitation()">Copy citation</button>
         <button type="button" class="btn" onclick="closeCite()">Close</button>
@@ -1733,7 +1741,7 @@ async function initHighlight(){
   $('hlSourceLink').href=instUrl;
   $('hlSourceLink').textContent='View at institution ↗';
   $('hlShareUrl').value=location.href;
-  $('hlEmbedCode').value=buildEmbedSnippet();
+  refreshEmbedField();
 
   // Generate a companion IIIF Content State (spec 1.0) value — the bare
   // encoded token, ready for any viewer's ?iiif-content= parameter
@@ -2246,12 +2254,59 @@ function buildEmbedSnippet(){
 }
 window.copyHlEmbed=function(){ copyText($('hlEmbedCode').value,'hlEmbedCopyBtn'); };
 
+/* Bare /embed URL, for hosts (ArcGIS StoryMaps, Notion, etc.) whose embed
+   field takes a link and builds the iframe themselves. NOT esc()'d — unlike
+   buildEmbedSnippet's src attribute this is copied as a plain URL, and the
+   &amp; entities that are correct inside HTML become literal text in an
+   address bar, collapsing every param after `manifest` into one value.
+   That lands on canvas 0 (see pCanvas's ||'0' default), which reads as
+   "the embed shows the first page of the document". */
+function buildEmbedUrl(){
+  return EMBED_ORIGIN+'/embed?'+buildEmbedParams().toString();
+}
+/* Same view, addressed by Content State token instead of loose params.
+   buildEmbedUrl leads with the manifest URL — the longest value, carrying its
+   own ://, slashes and sometimes its own query string — so a host that
+   truncates at the first & or fails to encode what it is given loses canvas
+   and xywh while still looking like a valid URL. The token is base64url: one
+   opaque value with nothing to mis-parse. Canvas comes back via the canvas
+   URI in the token (resolveHighlightContext resolves it to an index), not a
+   canvas= param, so there is no index to lose.
+   svc is appended outside the token deliberately: the Content State spec has
+   nowhere to put an image service base, and it is what lets the embed still
+   render when the manifest fetch fails. A host that truncates at this one
+   remaining & leaves the token intact and loses only that fallback. */
+function buildEmbedTokenUrl(){
+  if(!hlCtx||!hlCtx.canvasId||!pManifest) return '';
+  var token=encodeContentState(buildContentStateAnnotation(pManifest,hlCtx.canvasId,pXywh,pLabel));
+  var u=EMBED_ORIGIN+'/embed?iiif-content='+token;
+  if(hlCtx.svcBase) u+='&svc='+encodeURIComponent(hlCtx.svcBase);
+  return u;
+}
+/* One field, three forms. Size applies to the iframe form only — the URL
+   forms carry no dimensions — so its row is hidden unless iframe is picked. */
+var embedFormat='iframe';
+function refreshEmbedField(){
+  var v;
+  if(embedFormat==='url') v=buildEmbedUrl();
+  else if(embedFormat==='token') v=buildEmbedTokenUrl()||'(unavailable — canvas ID could not be resolved)';
+  else v=buildEmbedSnippet();
+  $('hlEmbedCode').value=v;
+}
+window.setEmbedFormat=function(fmt,btn){
+  embedFormat=fmt;
+  document.querySelectorAll('.emb-fmt').forEach(function(b){b.classList.remove('is-active');});
+  if(btn) btn.classList.add('is-active');
+  $('embSizeRow').style.display=(fmt==='iframe')?'flex':'none';
+  refreshEmbedField();
+};
+
 var embedSnippetWidth=640; // Small 480 / Medium 640 (default) / Large 800
 window.setEmbedSize=function(w,btn){
   embedSnippetWidth=w;
   document.querySelectorAll('.emb-size').forEach(function(b){b.classList.remove('is-active');});
   if(btn) btn.classList.add('is-active');
-  if($('hlEmbedCode').value) $('hlEmbedCode').value=buildEmbedSnippet();
+  if($('hlEmbedCode').value) refreshEmbedField();
 };
 
 /* ══ VIEWER MODE ══ */
