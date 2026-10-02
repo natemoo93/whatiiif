@@ -17,37 +17,6 @@ Live at [whatiiif.com](https://whatiiif.com). Works with any IIIF Presentation A
 
 Other niceties: a light and dark (Night) theme that remembers your choice, a chromeless `/embed` view built for iframing, and an attribution bar on embeds that always credits the source institution.
 
-## Supported institutions
-
-Paste a normal item or catalog page URL from any of these and whatiiif resolves the manifest automatically:
-
-- Library of Congress (item pages, Chronicling America newspaper pages, and general resource URLs)
-- Harvard Digital Collections (viewer links, DRS URN manifests, and CURIOSity catalog pages)
-- Yale Library
-- Internet Archive
-- Smithsonian Libraries
-- Biodiversity Heritage Library
-- Cambridge Digital Library
-- UCLA Digital Collections
-- Princeton University Library (DPUL)
-- Northwestern University Libraries Digital Collections
-- Illinois State University Digital Collections
-- CARLI Digital Collections
-- Any CONTENTdm-hosted institution (custom domains included)
-
-Also accepted directly, no institution handler required:
-
-- Direct IIIF manifest URLs (ending in `manifest.json` or `/manifest`)
-- Share links from other IIIF viewers (Theseus, Mirador, Universal Viewer, and whatiiif itself)
-
-Publishing IIIF and want your institution added? Get in touch through the [contact page](https://whatiiif.com/contact.html) or the [request form](https://tally.so/r/aQoOBE).
-
-## Coming soon
-
-### Sniiiffer, a faithful companion browser extension
-
-**Sniiiffer** is whatiiif's faithful companion browser extension. It rides along quietly in your toolbar and sniffs out IIIF manifests on the pages you visit, so you can copy a manifest, open an item in whatiiif, or highlight a region without leaving the page you are on. More to come.
-
 ## How it is built
 
 - **Front end.** A single self-contained `index.html` (no build step, no framework) served as a static page from GitHub Pages. [OpenSeadragon](https://openseadragon.github.io/) powers the deep-zoom viewer and is loaded only when a viewer is actually needed, so highlight landing pages stay fast.
