@@ -1015,6 +1015,45 @@ var PLATFORMS=[
     }
   },
 
+  // Wellcome Collection: /works/{id} (also /works/{id}/items). The manifest
+  // is keyed on a b-number that cannot be derived from the work id, so ask
+  // the catalogue API for the work's iiif-presentation location. API,
+  // manifest and image service all serve ACAO *, no proxy. Works with only
+  // an iiif-image location have no manifest and return null. Multi-volume
+  // works are sc:Collection wrappers; take volume 1 (same as Princeton).
+  // "View at institution" comes from the manifest's `related`.
+  // Verified live 2026-10-02 (dbdy7m9q, cyjkf4qq, ktru2dfx; d8quuwxg is a
+  // 3-volume collection). Keep in sync with Sniiiffer detect.js.
+  {
+    name:'Wellcome Collection',
+    pattern:/wellcomecollection\.org\/works\/([a-z0-9]+)/i,
+    toManifest:async function(url){
+      var m=url.match(/wellcomecollection\.org\/works\/([a-z0-9]+)/i);
+      if(!m) return null;
+      try{
+        var r=await fetch('https://api.wellcomecollection.org/catalogue/v2/works/'+m[1]+'?include=items');
+        if(!r.ok) return null;
+        var w=await r.json(), manifestUrl=null;
+        (w.items||[]).forEach(function(it){
+          (it.locations||[]).forEach(function(l){
+            if(!manifestUrl&&l.locationType&&l.locationType.id==='iiif-presentation'&&l.url) manifestUrl=l.url;
+          });
+        });
+        if(!manifestUrl){ console.warn('[whatiiif] Wellcome: work has no iiif-presentation location', url); return null; }
+        var mr=await fetch(manifestUrl);
+        if(!mr.ok) return null;
+        var mj=await mr.json();
+        if(mj['@type']==='sc:Collection'){
+          var vol=mj.manifests&&mj.manifests[0];
+          if(!vol||!vol['@id']){ console.warn('[whatiiif] Wellcome: collection with no sub-manifests', url); return null; }
+          console.warn('[whatiiif] Wellcome: multi-volume work, using volume 1 of '+mj.manifests.length, url);
+          return vol['@id'];
+        }
+        return manifestUrl;
+      }catch(e){ return null; }
+    }
+  },
+
   // UCLA Digital Collections — catalog ARK maps to iiif.library.ucla.edu with
   // the ark:/ segment percent-encoded in the path (Presentation v3). Manifest
   // and image service both CORS-open (ACAO *), no proxy. Verified 2026-07-10.
@@ -1101,6 +1140,7 @@ var PLATFORM_LINKS = {
   'Yale Library': 'https://collections.library.yale.edu/',
   'Cambridge Digital Library': 'https://cudl.lib.cam.ac.uk/',
   'UCLA Digital Collections': 'https://digital.library.ucla.edu/',
+  'Wellcome Collection': 'https://wellcomecollection.org/collections',
   'Princeton University Library': 'https://dpul.princeton.edu/',
   'Northwestern University Libraries Digital Collections': 'https://dc.library.northwestern.edu/',
 };
