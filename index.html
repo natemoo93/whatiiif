@@ -998,6 +998,23 @@ var PLATFORMS=[
     }
   },
 
+  // Yale Center for British Art — separate site and manifest host from Yale
+  // Library. /catalog/tms:{id} → manifests.collections.yale.edu/ycba/obj/{id}
+  // (v3, CORS open, no proxy; homepage in the manifest gives the source link).
+  // The item pages are behind a Cloudflare challenge, so heuristicResolve can
+  // never read them — this handler is the only route. Verified live 2026-10-01
+  // (tms:2519, tms:34, tms:5005). orbis: (rare books) ids are unverified.
+  // Keep in sync with Sniiiffer detect.js.
+  {
+    name:'Yale Center for British Art',
+    pattern:/collections\.britishart\.yale\.edu\/catalog\/tms(?::|%3A)(\d+)/i,
+    toManifest:function(url){
+      var m=url.match(/collections\.britishart\.yale\.edu\/catalog\/tms(?::|%3A)(\d+)/i);
+      if(!m) return null;
+      return 'https://manifests.collections.yale.edu/ycba/obj/'+m[1];
+    }
+  },
+
   // UCLA Digital Collections — catalog ARK maps to iiif.library.ucla.edu with
   // the ark:/ segment percent-encoded in the path (Presentation v3). Manifest
   // and image service both CORS-open (ACAO *), no proxy. Verified 2026-07-10.
@@ -1945,7 +1962,7 @@ function citeYear(s){
 // trimming trailing life dates.
 function citeNameOrder(s){
   var v=String(s).replace(/\s+/g,' ').trim()
-    .replace(/,?\s*\d{4}\s*-\s*\d{0,4}\.?$/,'')                 // life dates
+    .replace(/,?\s*\d{4}\s*[-\u2010-\u2015\u2212]\s*\d{0,4}\.?$/,'') // life dates; Yale (YCBA) uses U+2013
     .replace(/,\s*(Sir|Dame|Jr\.?|Sr\.?|[IVX]+)\.?$/i,'').trim(); // honorific/suffix
   var parts=v.split(',');
   if(parts.length===2){
