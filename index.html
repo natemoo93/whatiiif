@@ -1054,6 +1054,74 @@ var PLATFORMS=[
     }
   },
 
+  // Digital Bodleian: /objects/{uuid}/ maps to
+  // iiif.bodleian.ox.ac.uk/iiif/manifest/{uuid}.json (Presentation 2, paged).
+  // Manifest and image service both serve ACAO *, no proxy. The object page
+  // is a JS app whose HTML never links the manifest, so without this handler
+  // only heuristicResolve's Image-API-host derivation finds it. "View at
+  // institution" comes from the manifest's text/html `rendering`. Verified
+  // live 2026-10-02 on four object ids taken from Bodleian's own sitemap.
+  // Keep in sync with Sniiiffer detect.js.
+  {
+    name:'Digital Bodleian',
+    pattern:/digital\.bodleian\.ox\.ac\.uk\/objects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+    toManifest:function(url){
+      var m=url.match(/digital\.bodleian\.ox\.ac\.uk\/objects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      if(!m) return null;
+      return 'https://iiif.bodleian.ox.ac.uk/iiif/manifest/'+m[1].toLowerCase()+'.json';
+    }
+  },
+
+  // Biblissima IIIF Collections: an aggregator, so an entry page
+  // (/collections/manifest/{sha1}) points at a manifest hosted by the source
+  // library (Gallica, IRHT, BVH...). The page carries it as data-manifest.
+  // Biblissima sends no CORS headers, so the page is read through
+  // /manifest-proxy; no robots.txt on the host (404). The returned manifest
+  // is then fetched like any other (Gallica's serves ACAO *). Verified live
+  // 2026-10-02 (828ef78b06cc5cd080a229b7a65f0df65775cecd).
+  // Keep in sync with Sniiiffer detect.js.
+  {
+    name:'Biblissima',
+    pattern:/iiif\.biblissima\.fr\/collections\/manifest\/([0-9a-f]{40})/i,
+    toManifest:async function(url){
+      var m=url.match(/iiif\.biblissima\.fr\/collections\/manifest\/([0-9a-f]{40})/i);
+      if(!m) return null;
+      try{
+        var r=await fetch('/manifest-proxy?url='+encodeURIComponent('https://iiif.biblissima.fr/collections/manifest/'+m[1].toLowerCase()));
+        if(!r.ok) return null;
+        var html=await r.text();
+        var dm=html.match(/data-manifest="(https?:\/\/[^"]+)"/);
+        if(!dm){ console.warn('[whatiiif] Biblissima: entry page has no data-manifest', url); return null; }
+        return dm[1].replace(/&amp;/g,'&');
+      }catch(e){ return null; }
+    }
+  },
+
+  // Digital Scriptorium: a union catalog of manuscripts in US collections.
+  // /catalog/DS{n} is a record whose manifest is hosted by the member library
+  // (Penn Colenda, Huntington CONTENTdm, Internet Archive...). The record's
+  // JSON route 500s and search JSON omits the manifest, so the item page is
+  // read and the URL taken from its iiif_manifest_link field. No CORS on the
+  // page, so through /manifest-proxy; robots.txt is empty. Verified live
+  // 2026-10-02 on DS706, DS746, DS9955, DS9586, DS559, DS4468.
+  // Keep in sync with Sniiiffer detect.js.
+  {
+    name:'Digital Scriptorium',
+    pattern:/search\.digital-scriptorium\.org\/catalog\/(DS\d+)/i,
+    toManifest:async function(url){
+      var m=url.match(/search\.digital-scriptorium\.org\/catalog\/(DS\d+)/i);
+      if(!m) return null;
+      try{
+        var r=await fetch('/manifest-proxy?url='+encodeURIComponent('https://search.digital-scriptorium.org/catalog/'+m[1].toUpperCase()));
+        if(!r.ok) return null;
+        var html=await r.text();
+        var dm=html.match(/<dd[^>]*blacklight-iiif_manifest_link[^>]*>[\s\S]*?(https?:\/\/[^\s"<>]+)/);
+        if(!dm){ console.warn('[whatiiif] Digital Scriptorium: record has no IIIF manifest', url); return null; }
+        return dm[1].replace(/&amp;/g,'&');
+      }catch(e){ return null; }
+    }
+  },
+
   // UCLA Digital Collections — catalog ARK maps to iiif.library.ucla.edu with
   // the ark:/ segment percent-encoded in the path (Presentation v3). Manifest
   // and image service both CORS-open (ACAO *), no proxy. Verified 2026-07-10.
@@ -1141,6 +1209,9 @@ var PLATFORM_LINKS = {
   'Cambridge Digital Library': 'https://cudl.lib.cam.ac.uk/',
   'UCLA Digital Collections': 'https://digital.library.ucla.edu/',
   'Wellcome Collection': 'https://wellcomecollection.org/collections',
+  'Digital Bodleian': 'https://digital.bodleian.ox.ac.uk/',
+  'Biblissima': 'https://iiif.biblissima.fr/collections/',
+  'Digital Scriptorium': 'https://search.digital-scriptorium.org/',
   'Princeton University Library': 'https://dpul.princeton.edu/',
   'Northwestern University Libraries Digital Collections': 'https://dc.library.northwestern.edu/',
 };
@@ -1976,17 +2047,55 @@ function citeMetaPairs(m){
 // First metadata value whose label contains any of `keys` and none of `veto`.
 // Keys are tried in order across the whole list, so more specific synonyms
 // ("date of creation") win over vaguer ones ("date") wherever both exist.
+// A value that is a URL is never a name, date or institution: IRHT's "Source
+// images" field matched 'source' and put a link where the holding library
+// belonged, pushing out the real one from the attribution.
 function citeMetaFind(pairs,keys,veto){
+  var p=citeMetaPair(pairs,keys,veto);
+  return p?p.v:'';
+}
+function citeMetaPair(pairs,keys,veto){
   for(var j=0;j<keys.length;j++){
     for(var i=0;i<pairs.length;i++){
       var k=pairs[i].k;
       if(k.indexOf(keys[j])===-1) continue;
       if(veto&&veto.some(function(x){return k.indexOf(x)!==-1;})) continue;
-      return pairs[i].v;
+      if(/^(https?:\/\/|www\.)\S*$/i.test(pairs[i].v)) continue;
+      return pairs[i];
     }
   }
-  return '';
+  return null;
 }
+// Label words, English first so existing matches are unchanged, then French,
+// German, Italian, Spanish and Latin (Biblissima, IRHT, Gallica and other
+// European sources label their metadata in their own language). Matching is
+// by substring on the lowercased label, so short or common words are avoided:
+// Italian 'data' would match English "metadata", 'signatur' would match the
+// collation field "Signatures".
+var CITE_AUTHOR_KEYS=['creator','author','artist','photographer','composer','maker',
+  'auteur','créateur','createur',               // French ('artiste' matched by 'artist')
+  'verfasser','urheber','künstler','kuenstler', // German ('autor' below)
+  'autore','creatore',                          // Italian ('artista' matched by 'artist')
+  'autor','creador',                            // Spanish, German
+  'auctor'];                                    // Latin
+var CITE_AUTHOR_VETO=['record','metadata','cataloguer','cataloger',
+  'notice','catalogage','métadonnées','metadonnees','katalogisat','catalogazione','catalogación','catalogacion'];
+var CITE_DATE_KEYS=['date of creation','date created','date issued','creation','created','issued','date','year',
+  'datation',                                   // French ('date de ...' matched by 'date')
+  'datierung','entstehung','datum','jahr',      // German
+  'datazione','data di',                        // Italian
+  'fecha'];                                     // Spanish
+var CITE_COLLECTION_KEYS=['collection','series','repository','archive','fonds',
+  'sammlung','bestand','collezione','fondo','colección','coleccion'];
+var CITE_INST_KEYS=['institution','repository','physical location','holding','contributing','publisher','source',
+  'lieu de conservation','dépositaire','depositaire',
+  'aufbewahrungsort','standort','besitzende',
+  'istituzione','ente conservatore',
+  'institución','institucion','repositorio',
+  'biblioteca','bibliothek'];
+// Labels that name ONLY a shelfmark; matched whole, not by substring.
+var CITE_SHELFMARK_LABEL=/^(shelfmark|shelf mark|call number|classmark|cote|signatur|signatura|segnatura|collocazione|signatura topográfica|signatura topografica)$/;
+var CITE_TITLE_WORD=/\b(title|titre|titel|titolo|título|titulo|titulus)\b/;
 // A 4-digit year is all Chicago needs, and metadata dates arrive in every
 // format imaginable ("1885-03-04", "circa 1900", "[1885]"). Pull the year;
 // if the value has no year at all, use it verbatim (e.g. "undated").
@@ -2018,10 +2127,36 @@ function buildCitation(ctx){
 
   // "Author(s) of the Record" (CUDL) names the cataloguer, not the creator —
   // exclude labels that scope themselves to the record/metadata.
-  var author=citeNameOrder(citeMetaFind(pairs,['creator','author','artist','photographer','composer','maker'],
-    ['record','metadata','cataloguer','cataloger']));
+  var author='';
+  var ap=citeMetaPair(pairs,CITE_AUTHOR_KEYS,CITE_AUTHOR_VETO);
+  if(ap){
+    if(CITE_TITLE_WORD.test(ap.k)){
+      // Combined field, e.g. IRHT "Auteur, titre, oeuvre" = "JEAN FROISSART,
+      // Chroniques". The name is before the first comma; it must NOT go
+      // through citeNameOrder, which would flip it into "Chroniques JEAN
+      // FROISSART". No comma means the parts can't be told apart: skip it.
+      var ci=ap.v.indexOf(',');
+      if(ci>0) author=ap.v.slice(0,ci).trim();
+    } else {
+      author=citeNameOrder(ap.v);
+    }
+  }
   var title=(ctx.mLabel||'').trim();
-  var date=citeYear(citeMetaFind(pairs,['date of creation','date created','date issued','creation','created','issued','date','year'])||getLabel(m.navDate));
+  var date=citeYear(citeMetaFind(pairs,CITE_DATE_KEYS)||getLabel(m.navDate));
+
+  // Shelfmark, unless the title already carries it (IRHT and Gallica labels
+  // are often the shelfmark itself). Compared on its final part too: Gallica's
+  // title abbreviates the library ("BnF. ... Français 24395") while the
+  // shelfmark spells it out ("Bibliothèque nationale de France. ... Français
+  // 24395").
+  var shelfmark='';
+  for(var si=0;si<pairs.length;si++){
+    if(CITE_SHELFMARK_LABEL.test(pairs[si].k)&&!/^(https?:\/\/|www\.)/i.test(pairs[si].v)){ shelfmark=pairs[si].v; break; }
+  }
+  if(shelfmark){
+    var smTail=shelfmark.split(/[.,;]\s+/).pop().trim();
+    if(title.indexOf(shelfmark)!==-1||(smTail.length>=4&&title.indexOf(smTail)!==-1)) shelfmark='';
+  }
 
   // Page/part designation: the institution's canvas label, else the canvas
   // index. Bare numbers get a "p." prefix. Deliberately NOT the user's ?label=
@@ -2036,18 +2171,20 @@ function buildCitation(ctx){
     else page=cl;
   }
 
-  var collection=citeMetaFind(pairs,['collection','series','repository','archive','fonds']);
+  var collection=citeMetaFind(pairs,CITE_COLLECTION_KEYS);
   // Institution: an explicit metadata field, else the manifest provider, else
   // the requiredStatement (already tag- and URL-stripped by getAttribution).
-  var inst=citeMetaFind(pairs,['institution','repository','physical location','holding','contributing','publisher','source'])
+  var inst=citeMetaFind(pairs,CITE_INST_KEYS)
     ||attr.provider||attr.statement;
 
-  // Note-form order: creator, "title," date, locator, collection, repository.
+  // Note-form order: creator, "title," date, locator, shelfmark, collection,
+  // repository.
   var parts=[];
   if(author) parts.push(author);
   if(title) parts.push('“'+title+'”'); // note form quotes the item title
   if(date) parts.push(date);
   if(page) parts.push(page);
+  if(shelfmark) parts.push(shelfmark);
   if(collection&&collection!==inst) parts.push(collection);
   if(inst) parts.push(inst);
   var cite=parts.join(', ');
